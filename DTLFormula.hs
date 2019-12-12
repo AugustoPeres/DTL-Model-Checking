@@ -2,15 +2,20 @@ module DTLFormula
   (
     LocalFormula
   , Formula
+  , GlobalFormula
   , localSubFormulas
   , globalSubFormulas
-  , GlobalFormula
+  , closureFormula
+  , negateFormula
+  , subFormulasAgent
+  , findInDepthForAgent
   , psiTest
   ) where
 
 -- TODO: Corrigir recursivamente a profundidade das fórmulas
 
-import qualified Data.Set as Set
+import           Data.Maybe
+import qualified Data.Set   as Set
 
 type PropSymbol = String
 type Agent = Int
@@ -56,12 +61,10 @@ instance Show Formula
 -}
 closureFormula :: GlobalFormula -> Int -> Set.Set Formula
 closureFormula a n =
-  Set.union (Set.map negateFormula w ) w
-  where w    = Set.union set1 set2
-        set1 = Set.fromList $ map FromGlobal (globalSubFormulas a)
-        set2 = (helper Set.empty) $ map (Set.fromList . subFormulasAgent a) [1..n]
-        helper s [x]    = Set.union s x
-        helper s (x:xs) = helper (Set.union s x) xs
+  Set.union (Set.map negateFormula s) s
+  where s = Set.union w g
+        w = Set.fromList $ concatMap (subFormulasAgent a) [1..n]
+        g = Set.fromList $ map FromGlobal (globalSubFormulas a)
 
 {-| Given any formula 'negateFormula' negates it-}
 negateFormula :: Formula -> Formula
@@ -75,75 +78,43 @@ negateFormula (FromGlobal a)        = FromGlobal (GNot a)
   that are in the domain of a given agent
 -}
 subFormulasAgent :: GlobalFormula -> Agent -> [Formula]
-subFormulasAgent alpha i =
-  map FromLocal a2
-  where a2 = concatMap localSubFormulas a
-        a = map (getLocalFormulaAtDepth1 i) aux
-        aux = filter (isFormulaOfAgentAtDepth1 i) aux2
-        aux2 = globalSubFormulas alpha
+subFormulasAgent (Local i1 f) i2    = if i1 == i2
+                                         then map FromLocal (localSubFormulas f i1)
+                                         else concatMap ( map FromLocal . (`localSubFormulas` i2) . fromJust) (filter isJust (findInDepthForAgent f i2))
+subFormulasAgent (GNot f) i         = subFormulasAgent f i
+subFormulasAgent (GImplies f1 f2) i = subFormulasAgent f1 i ++ subFormulasAgent f2 i
 
 {-|
-  'getLocalFormulas' returns all the formulas of the agent i
-  at any recursion depth that are inside some GlobalFormula
+  'localSubFormulas' receives a local formula and an agent. It returns all the
+  local formulas that are in the domain of said agent.
+  When it finds a communication formula it searches in depth for formulas of that
+  agent.
 -}
-
--- This becomes simpler if we notice that we need only look in formulas
--- with the @ operator (Local)
-
--- getLocalFormulas :: Agent -> GlobalFormula -> [LocalFormula]
--- getLocalFormulas i a =
---   if isFormulaOfAgentAtDepth1 i a
---     then b : getFormulaOfAgentAtDepth i b
---     else getFormulaOfAgentAtDepth i c
---   where b = getFormulaOfAgentAtDepth i a -- this maybe is undefined, chekc for problems
---         c = getFirstLocalFormula a
---
--- getFirstLocalFormula :: GlobalFormula -> LocalFormula
--- getFirstLocalFormula (Local i a) = a
--- getFirstLocalFormula (GNot a) = getFirstLocalFormula a
--- getForstLocalFormula (GImplies a1 a1) =
-
+localSubFormulas :: LocalFormula -> Agent -> [LocalFormula]
+localSubFormulas (PropositionalSymbol s) _ = [PropositionalSymbol s]
+localSubFormulas y@(Implies f g)         i = y : localSubFormulas f i ++ localSubFormulas g i
+localSubFormulas y@(Next f)              i = y : localSubFormulas f i
+localSubFormulas y@(Globally f)          i = y : localSubFormulas f i
+localSubFormulas y@(Comunicates _ f)     i = y : concatMap ((`localSubFormulas` i) . fromJust) (filter isJust (findInDepthForAgent f i))
+localSubFormulas y@(Not f)               i = y : localSubFormulas f i
 
 {-|
-  'isFormulaOfAgentAtDepth' checks if there is a formula in the domain of
-  agent i at any depth in a local formula for some other agent j
+  'findInDepthForAgent' receives an agent and a formula. It searches util it finds
+  a formula that communicats with said agent.
 -}
--- isFormulaOfAgentAtDepth :: Agent -> LocalFormula -> Bool
--- isFormulaOfAgentAtDepth _ (PropositionalSymbol _) = False
--- isFormulaOfAgentAtDepth i (Comunicates i1 f)      = if i1 == i then True else isFormulaOfAgentAtDepth i f
--- isFormulaOfAgentAtDepth i (Implies f1 f2)         = isFormulaOfAgentAtDepth i f1 || isFormulaOfAgentAtDepth i f2
--- isFormulaOfAgentAtDepth i (Next f)                = isFormulaOfAgentAtDepth i f
--- isFormulaOfAgentAtDepth i (Globally f)            = isFormulaOfAgentAtDepth i f
--- isFormulaOfAgentAtDepth i (Not f)                 = isFormulaOfAgentAtDepth i f
---
--- {-|
---   'getFormulaOfAgentAtDepth' returns a list of all formulas for some agent i
---   that are inside some local formula for agent j
--- -}
--- getFormulaOfAgentAtDepth :: Agent -> LocalFormula -> [LocalFormula]
--- getFormulaOfAgentAtDepth _ (PropositionalSymbol _) = []
--- getFormulaOfAgentAtDepth i (Comunicates i1 f)      = if i1 == i then [f] ++ getFormulaOfAgentAtDepth i f else getFormulaOfAgentAtDepth i f
--- getFormulaOfAgentAtDepth i (Implies f1 f2)         = getFormulaOfAgentAtDepth i f1 ++ getFormulaOfAgentAtDepth i f2
--- getFormulaOfAgentAtDepth i (Next f)                = getFormulaOfAgentAtDepth i f
--- getFormulaOfAgentAtDepth i (Globally f)            = getFormulaOfAgentAtDepth i f
--- getFormulaOfAgentAtDepth i (Not f)                 = getFormulaOfAgentAtDepth i f
+findInDepthForAgent :: LocalFormula -> Agent -> [Maybe LocalFormula]
+findInDepthForAgent (PropositionalSymbol _) _ = [Nothing]
+findInDepthForAgent (Comunicates i1 g) i2     = if i1 == i2
+                                                   then [Just g]
+                                                   else findInDepthForAgent g i2
+findInDepthForAgent (Implies f1 f2) i         = findInDepthForAgent f1 i ++ findInDepthForAgent f2 i
+findInDepthForAgent (Not f) i                 = findInDepthForAgent f i
+findInDepthForAgent (Next f) i                = findInDepthForAgent f i
+findInDepthForAgent (Globally f) i            = findInDepthForAgent f i
 
-isFormulaOfAgentAtDepth1 :: Int -> GlobalFormula -> Bool
-isFormulaOfAgentAtDepth1 i1 (Local i2 f) = i1 == i2
-isFormulaOfAgentAtDepth1 _ _             = False
-
-getLocalFormulaAtDepth1 :: Int -> GlobalFormula -> LocalFormula
-getLocalFormulaAtDepth1 i1 (Local i2 f) = if i1 == i2 then f else undefined
-getLocalFormulaAtDepth1 _ _             = undefined
-
-localSubFormulas :: LocalFormula -> [LocalFormula]
-localSubFormulas (PropositionalSymbol s) = [PropositionalSymbol s]
-localSubFormulas y@(Implies f g)         = y : localSubFormulas f ++ localSubFormulas g
-localSubFormulas y@(Next f)              = y : localSubFormulas f
-localSubFormulas y@(Globally f)          = y : localSubFormulas f
-localSubFormulas y@(Comunicates _ _)     = [y] -- this needs to be changed
-localSubFormulas y@(Not f)               = y : localSubFormulas f
-
+{-|
+  'globalSubFormulas' breaks down a global formula in all its sub formulas.
+-}
 globalSubFormulas :: GlobalFormula -> [GlobalFormula]
 globalSubFormulas a@(Local _ _)    = [a]
 globalSubFormulas a@(GNot f)       = a : globalSubFormulas f
@@ -156,6 +127,10 @@ psi1 = Not (PropositionalSymbol "q")
 psi2 :: LocalFormula
 psi2 = Next $ Not (PropositionalSymbol "q")
 psi3 :: LocalFormula
-psi3 = Implies (psi1) (psi2)
+psi3 = Implies psi1 psi2
 psiGTest :: GlobalFormula
 psiGTest = GNot (Local 1 psiTest)
+
+psiTeseLocal1 = Not (Comunicates 2 (Next (Comunicates 1 (Globally (PropositionalSymbol "p")))))
+psiTeseLocal2 = Not (Next (PropositionalSymbol "q"))
+psiTeseGlobal = GImplies (Local 1 psiTeseLocal1) (Local 2 psiTeseLocal2)
