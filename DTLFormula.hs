@@ -1,8 +1,9 @@
 module DTLFormula
   (
-    LocalFormula
-  , Formula
-  , GlobalFormula
+    LocalFormula(..)
+  , Formula(..)
+  , GlobalFormula(..)
+  , Agent
   , localSubFormulas
   , globalSubFormulas
   , closureFormula
@@ -10,6 +11,14 @@ module DTLFormula
   , subFormulasAgent
   , findInDepthForAgent
   , psiTest
+  , isImplication
+  , isNegation
+  , isNext
+  , isGlobally
+  , isCommunication
+  , isAtAgent
+  , isGlobal
+  , isLocal
   ) where
 
 -- TODO: Corrigir recursivamente a profundidade das fórmulas
@@ -119,6 +128,42 @@ globalSubFormulas :: GlobalFormula -> [GlobalFormula]
 globalSubFormulas a@(Local _ _)    = [a]
 globalSubFormulas a@(GNot f)       = a : globalSubFormulas f
 globalSubFormulas a@(GImplies f g) = a : globalSubFormulas f ++ globalSubFormulas g
+
+{-|
+  Checks if a formula is an implication
+-}
+isImplication :: Formula -> Bool
+isImplication (FromLocal (Implies _ _))   = True
+isImplication (FromGlobal (GImplies _ _)) = True
+isImplication _                           = False
+
+isNegation :: Formula -> Bool
+isNegation (FromLocal (Not _))   = True
+isNegation (FromGlobal (GNot _)) = True
+isNegation _                     = False
+
+isGlobally :: Formula -> Bool
+isGlobally (FromLocal (Globally _)) = True
+isGlobally _                        = False
+
+isNext :: Formula -> Bool
+isNext (FromLocal (Next _)) = True
+isNext _                    = False
+
+isCommunication :: Formula -> Bool
+isCommunication (FromLocal (Comunicates _ _)) = True
+isCommunication _                             = False
+
+isAtAgent :: Formula -> Agent -> Bool
+isAtAgent (FromGlobal (Local i' _)) i = i == i'
+isAtAgent _ _                         = False
+
+isGlobal :: Formula -> Bool
+isGlobal (FromGlobal _) = True
+isGlobal _              = False
+
+isLocal :: Formula -> Bool
+isLocal f = not $ isGlobal f
 
 psiTest :: LocalFormula
 psiTest = Implies (Globally (PropositionalSymbol "p") ) (Comunicates 2 (PropositionalSymbol "q"))
