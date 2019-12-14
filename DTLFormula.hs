@@ -19,6 +19,9 @@ module DTLFormula
   , isAtAgent
   , isGlobal
   , isLocal
+  , isLiteral
+  , isPropSymbol
+  , tailFormula
   ) where
 
 -- TODO: Corrigir recursivamente a profundidade das fórmulas
@@ -46,7 +49,7 @@ data Formula = FromGlobal GlobalFormula | FromLocal LocalFormula deriving (Eq, O
 
 -- Instancing my custom show for the formulas
 instance Show LocalFormula
-  where show (PropositionalSymbol a) = show a
+  where show (PropositionalSymbol a) = a -- no need to use show since this is already a string
         show (Implies a b)           = show a ++ " => " ++ show b
         show (Next a)                = "X(" ++ show a ++ ")"
         show (Globally a)            = "G(" ++ show a ++ ")"
@@ -164,6 +167,25 @@ isGlobal _              = False
 
 isLocal :: Formula -> Bool
 isLocal f = not $ isGlobal f
+
+isPropSymbol :: Formula -> Bool
+isPropSymbol (FromLocal (PropositionalSymbol _)) = True
+isPropSymbol _                                   = False
+
+isLiteral :: Formula -> Bool
+isLiteral (FromLocal (Not psi)) = isPropSymbol (FromLocal psi)
+isLiteral g@_                   = isPropSymbol g
+
+tailFormula :: Formula -> Formula -- returns the tail of a formula
+tailFormula (FromLocal (Implies _ _))           = undefined
+tailFormula (FromGlobal (GImplies _ _))         = undefined
+tailFormula (FromLocal (PropositionalSymbol _)) = undefined
+tailFormula (FromLocal (Next f))                = FromLocal f
+tailFormula (FromLocal (Globally f))            = FromLocal f
+tailFormula (FromLocal (Not f))                 = FromLocal f
+tailFormula (FromLocal (Comunicates _ f))       = FromLocal f
+tailFormula (FromGlobal (Local _ f))            = FromLocal f
+tailFormula (FromGlobal (GNot f))               = FromGlobal f
 
 psiTest :: LocalFormula
 psiTest = Implies (Globally (PropositionalSymbol "p") ) (Comunicates 2 (PropositionalSymbol "q"))
