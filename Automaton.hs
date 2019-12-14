@@ -45,7 +45,7 @@ makeLocalGNBA :: GlobalFormula -> -- formula for which the automaton is made
 makeLocalGNBA a i n act =
   GNBA {
         states = s,
-        inicialStates = makeInitialStates clo sm s,
+        inicialStates = makeInitialStates sm s,
         stateMap = sm,
         finalStates = makeAcceptingSets clo sm s,
         delta = makeDelta s sm clo lit act,
@@ -124,12 +124,10 @@ makeStateMap :: [State] -> [Set.Set Formula] -> Map.Map State [Set.Set Formula]
 makeStateMap s s' = Map.fromList (zip s (map aux s'))
                     where aux x = [x]
 
-makeInitialStates :: Set.Set Formula -> -- Closure of the formula. To avoid a
-                     -- repetitive call to the function
-                     Map.Map State [Set.Set Formula] -> -- the map to the states
+makeInitialStates :: Map.Map State [Set.Set Formula] -> -- the map to the states
                      [State] -> -- all the states in the automaton
                      [State]
-makeInitialStates clo ms s =
+makeInitialStates ms s =
   filter faux s
   where faux x = not . hasCommunicationFormulas . head . fromJust $ Map.lookup x ms
         -- this throws an error if a key is not found
