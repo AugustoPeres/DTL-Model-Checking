@@ -28,14 +28,116 @@ data GNBA = GNBA {states        :: [State],
                   stateMap      :: Map.Map State [Set.Set Formula],
                   finalStates   :: [Set.Set State],
                   delta         :: Map.Map State [(AlphabetSymbol, State)],
-                  actions       :: [Action] -- we must keep tract of the actions
+                  actions       :: [[Action]] -- we must keep tract of the actions of each agent
                  } deriving(Show)
+
+{-
+================================================================================
+        Functions for the global automaton
+================================================================================
+-}
+
+makeGlobalAutomaton :: GNBA -> GNBA -> GNBA
+makeGlobalAutomaton g1 g2 = undefined
+
+makeStateSetsG :: GNBA -> GNBA -> [[Set.Set Formula]]
+makeStateSetsG g1 g2 =
+  [ a ++ b | a <- sets1,
+             b <- sets2,
+             haveSameGlobalFormulas a b]
+  where sets1 = getSetsGNBA g1
+        sets2 = getSetsGNBA g2
+
+makeStatesG :: GNBA -> GNBA -> [State]
+makeStatesG g1 g2 = [1..(length (makeStateSetsG g1 g2))]
+
+makeStateMapG :: GNBA -> GNBA -> Map.Map State [Set.Set Formula]
+makeStateMapG g1 g2 =
+  Map.fromList (zip [1..] states)
+  where states = makeStateSetsG g1 g2
+
+-- NOTE: THIS IS USELESS. TENHO DE FAZER PARA UM CASO MAIS GERAL EM QUE JÁ TENHO VÁRIOS AUTOMATOS JUNTOS.
+
+-- makeAcceptingSetsG :: States -> [Set.Set State]
+-- makeAcceptingSetsG =
+--   [Set.fromList s | s <- states, helper s]
+--   where helper :: State -> Bool
+--         helper
+
+-- makeDeltaG :: [State] -> -- States in the automaton
+--               Map.Map State [Set.Set Formula] -> -- mapping the state
+--               GNBA ->
+--               GNBA ->
+--               Map.Map State [(AlphabetSymbol, State)]
+-- makeDeltaG s sm g1 g2 =
+--   foldl (`addStateImagesG` sm g1 g2) delta s
+--   where delta = Map.fromList (zip s (take (length s) (repeat [])))
+--
+-- addStateImagesG :: State ->
+--                    [State] -> -- all other states
+--                    Map.Map State [Set.Set Formula] ->
+--                    GNBA ->
+--                    GNBA ->
+--                    Map.Map State [(AlphabetSymbol, State)]
+-- addStateImagesG s ss sm g1 g2 =
+--   Map.insertWith (++) s (transitionsStateG s ss sm g1 g2) sm
+--
+-- -- all possible transitions for a state in a given automaton
+-- transitionsStateG :: State ->
+--                      [State] -> -- all other states
+--                      Map.Map State [Set.Set Formula] ->
+--                      GNBA ->
+--                      GNBA ->
+--                      Set.Set Formula -> -- literals. tenho de por nas outras
+--                      [(AlphabetSymbol, State)]
+-- transitionsStateG s ss sm l g1 g2 =
+--   [(symbol, state) | symbol <- possibleSymbols, state <- pS, isTransitionAllowedG s symbol state]
+--   where possibleSymbols = [(s, a) | s <- Set.toList (Set.powerSet l), a <- actions]
+--         actions = nub $ actions g1 ++ actions g2
+--
+-- -- gets a state a symbol and a state and checks is the transition is allowed
+-- isTransitionAllowedG :: State -> -- origin
+--                         PropositionalSymbol ->
+--                         State -> -- Goal State
+--                         Map.Map State [Set.Set Formula] -> -- mapping to the states
+--                         GNBA ->
+--                         GNBA ->
+--                         Bool
+-- isTransitionAllowedG o p d sm g1 g2 =
+--   (a1 || remainedUnchaged 1 o d) &&
+--   (a2 || remainedUnchaged 2 o d) &&
+--   (not a1 || isTransitionAllowedG 1 o d ) && -- to be defined
+--   (not a2 || isTransitionAllowedG 1 o d ) && -- to be defined (NOTE: use the fact the the local automata is know to us)
+--   (not (a2 and ) ||)
+--   where isActionOf a i = if i == 1
+--                             then elem a (concat actions g1)
+--                             else elem a (concat actions g2)
+--         a1 = isActionOf action 1
+--         a2 = isActionOf action 2
+--         action = getAction p
+--         getAction (_, a) = a
+
+{-
+================================================================================
+        End of the functions for the global automaton
+================================================================================
+-}
+
 
 {-
 ================================================================================
       This functions are only for the local GNBA
 ================================================================================
 -}
+
+-- |Returns all the sets in the automaton [[Set1, Set2], [S, S'],...]
+getSetsGNBA :: GNBA -> [[Set.Set Formula]]
+getSetsGNBA g =
+  [fromJust $ Map.lookup k sm | k <- s]
+  where sm = stateMap g
+        s  = states g
+
+-- Construction of the automaton
 
 makeLocalGNBA :: GlobalFormula -> -- formula for which the automaton is made
                  Agent -> -- agent for which we make the automaton
@@ -49,7 +151,7 @@ makeLocalGNBA a i n act =
         stateMap = sm,
         finalStates = makeAcceptingSets clo sm s,
         delta = makeDelta s sm clo lit act,
-        actions = act
+        actions = [act]
        }
   where clo = closureFormula a n
         s = [1..(length necessarySets)]
@@ -70,7 +172,7 @@ makeDelta s ms clo lit act =
   foldl (addStateImages ms lit act s clo) delta s
   where delta = Map.fromList (zip s (take (length s) (repeat [])))
 
-
+-- add to the Map the transitions for a given state
 addStateImages :: Map.Map State [Set.Set Formula] -> -- map with all the states
                   Set.Set Formula -> -- Lit_i
                   [Action] -> -- list of actions
@@ -82,6 +184,7 @@ addStateImages :: Map.Map State [Set.Set Formula] -> -- map with all the states
 addStateImages ms lit act states clo rmap s =
   Map.insertWith (++) s (transitionsState ms lit s states act clo) rmap
 
+-- all the possible transitions fot a given state
 transitionsState :: Map.Map State [Set.Set Formula] -> -- all the states
                     Set.Set Formula -> --literals
                     State -> --State
@@ -95,6 +198,7 @@ transitionsState ms li s states act clo =
         pS = possibleStates s ms states clo
         state = head $ fromJust (Map.lookup s ms)
 
+-- Returns all the states from one state
 possibleStates :: State -> Map.Map State [Set.Set Formula] -> [State] -> Set.Set Formula -> [State]
 possibleStates s ms states clo = filter (isTransitionAllowed s ms clo) states
 
@@ -127,9 +231,9 @@ makeStateMap s s' = Map.fromList (zip s (map aux s'))
 makeInitialStates :: Map.Map State [Set.Set Formula] -> -- the map to the states
                      [State] -> -- all the states in the automaton
                      [State]
-makeInitialStates ms s =
+makeInitialStates sm s =
   filter faux s
-  where faux x = not . hasCommunicationFormulas . head . fromJust $ Map.lookup x ms
+  where faux x = all (not . hasCommunicationFormulas) (fromJust $ Map.lookup x sm)
         -- this throws an error if a key is not found
 
 makeAcceptingSets :: Set.Set Formula -> -- Closure of the formula
@@ -285,6 +389,12 @@ verifiesMaximal b n a =
   Set.findMin $ Set.map (helper b) clo
   where clo = closureFormula a n
         helper set f = (Set.member f set) || Set.member (negateFormula f) set
+
+haveSameGlobalFormulas :: [Set.Set Formula] -> [Set.Set Formula] -> Bool
+haveSameGlobalFormulas s1 s2 =
+  allEqual l
+  where l = map (Set.filter isGlobal) s1 ++ map (Set.filter isGlobal) s2
+        allEqual xs = and $ map (== head xs) (tail xs)
 
 psiSetsL1 = PropositionalSymbol "p"
 psiSetsL2 = PropositionalSymbol "q"
