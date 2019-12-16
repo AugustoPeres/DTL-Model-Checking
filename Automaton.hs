@@ -37,24 +37,22 @@ data GNBA = GNBA {states        :: [State],
 ================================================================================
 -}
 
-makeGlobalAutomaton :: GNBA -> GNBA -> GNBA
-makeGlobalAutomaton g1 g2 = undefined
+makeGlobalAutomaton :: Formula -> Int -> GNBA
+makeGlobalAutomaton g1 g2 = undefined -- GNBA {states = ..., inicialStates = ...}
 
-makeStateSetsG :: GNBA -> GNBA -> [[Set.Set Formula]]
-makeStateSetsG g1 g2 =
-  [ a ++ b | a <- sets1,
-             b <- sets2,
-             haveSameGlobalFormulas a b]
-  where sets1 = getSetsGNBA g1
-        sets2 = getSetsGNBA g2
+makeStateSetsG :: [GNBA] -> [[Set.Set Formula]]
+makeStateSetsG automatons =
+  helper (map getSetsGNBA automatons)
+  where helper (x:[rest]) = [a ++ b | a <- x, b <- rest, haveSameGlobalFormulas a b]
+        helper (x:xs)     = [a ++ b | a <- x, b <- helper xs, haveSameGlobalFormulas a b]
 
-makeStatesG :: GNBA -> GNBA -> [State]
-makeStatesG g1 g2 = [1..(length (makeStateSetsG g1 g2))]
+makeStatesG :: [GNBA] -> [State]
+makeStatesG automatons = [1..(length (makeStateSetsG automatons))] --TODO: Ver se posso mudar aqui isto por motivos de eficiencia. Por exemplo meter na funcao grande
 
-makeStateMapG :: GNBA -> GNBA -> Map.Map State [Set.Set Formula]
-makeStateMapG g1 g2 =
-  Map.fromList (zip [1..] states)
-  where states = makeStateSetsG g1 g2
+makeStateMapG :: [State] -> [[Set.Set Formula]] -> Map.Map State [Set.Set Formula]
+makeStateMapG s s' = Map.fromList $ zip s s'
+
+-- TODO: TENTAR CRIAR DELTA A PARTIR DE UMA LISTA. DEVE SER MAIS FACIL
 
 -- NOTE: THIS IS USELESS. TENHO DE FAZER PARA UM CASO MAIS GERAL EM QUE JÁ TENHO VÁRIOS AUTOMATOS JUNTOS.
 
@@ -160,7 +158,7 @@ makeLocalGNBA a i n act =
         --
         necessarySets = iElementarySets a i n propSymbs
         propSymbs = Set.fromList $ filter isPropSymbol subForms
-        subForms = (subFormulasAgent a i)
+        subForms = subFormulasAgent a i
 
 makeDelta :: [State] -> -- states in the automaton
              Map.Map State [Set.Set Formula] -> -- keep track of the states
