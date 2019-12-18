@@ -22,6 +22,7 @@ module DTLFormula
   , isLiteral
   , isPropSymbol
   , tailFormula
+  , communicationAgent
   ) where
 
 -- TODO: Corrigir recursivamente a profundidade das fórmulas
@@ -186,6 +187,11 @@ tailFormula (FromLocal (Not f))                 = FromLocal f
 tailFormula (FromLocal (Comunicates _ f))       = FromLocal f
 tailFormula (FromGlobal (Local _ f))            = FromLocal f
 tailFormula (FromGlobal (GNot f))               = FromGlobal f
+
+-- returns the agent with which we comunicate
+communicationAgent :: Formula -> Agent
+communicationAgent (FromLocal (Comunicates i _)) = i
+communicationAgent _                             = undefined
 
 psiTest :: LocalFormula
 psiTest = Implies (Globally (PropositionalSymbol "p") ) (Comunicates 2 (PropositionalSymbol "q"))

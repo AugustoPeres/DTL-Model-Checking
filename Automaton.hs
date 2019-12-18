@@ -13,6 +13,8 @@ import           DTLFormula
 -- TODO: Clean up the code. I want this module to be independent from the formulas
 --       module. To do that I cannot use constructors in this part of the code.
 --       More getters have to be defined
+--
+--      Fazer o automato receber os simbolos proposicionais
 
 -- This part is designeted to building the automatons for the formula
 -- We use the same data types for both local automatons and global automatons
@@ -37,8 +39,24 @@ data GNBA = GNBA {states        :: [State],
 ================================================================================
 -}
 
-makeGlobalAutomaton :: Formula -> Int -> GNBA
-makeGlobalAutomaton g1 g2 = undefined -- GNBA {states = ..., inicialStates = ...}
+makeGlobalGNBA :: GlobalFormula -> Int -> [[Action]] -> GNBA
+makeGlobalGNBA a n act =
+  GNBA { states = s,
+         inicialStates = makeInitialStates sm s a,
+         stateMap = sm,
+         finalStates = [],
+         delta = makeDeltaG clo act sm a s,
+         actions = act
+       }
+  where l = map (\x -> makeLocalGNBA a x n (act!!x)) [1..n]
+        s = makeStatesG l
+        sm = makeStateMapG s stateSets
+        stateSets = makeStateSetsG l
+        clo = closureFormula a n
+
+-- makeInicialStatesG :: Map.Map State [Set.Set Formula] -> GlobalFormula -> [State]
+-- makeInicialStates sm =
+--   filter
 
 makeStateSetsG :: [GNBA] -> [[Set.Set Formula]]
 makeStateSetsG automatons =
@@ -52,68 +70,50 @@ makeStatesG automatons = [1..(length (makeStateSetsG automatons))] --TODO: Ver s
 makeStateMapG :: [State] -> [[Set.Set Formula]] -> Map.Map State [Set.Set Formula]
 makeStateMapG s s' = Map.fromList $ zip s s'
 
--- TODO: TENTAR CRIAR DELTA A PARTIR DE UMA LISTA. DEVE SER MAIS FACIL
+makeDeltaG :: Set.Set Formula -> --closure of the formula
+              [[Action]] -> -- automaton
+              Map.Map State [Set.Set Formula] ->
+              GlobalFormula -> -- formual
+              [State] -> -- list with the states
+              Map.Map State [(AlphabetSymbol, State)]
+makeDeltaG clo act' sm a s =
+  Map.fromList [(state, [(symbol, state') | symbol <- possibleSymbols, state' <- s, condition state state' symbol]) | state <- s]
+  where possibleSymbols = [(val, a) | val <- valuations, a <- act]
+        -- da forma como isto esta definido tenho literais a mais
+        --valuations = Set.toList $ Set.filter (all (not . isNegation)) (Set.powerSet lit)
+        -- TODO:corrigir aqui isto
+        valuations = Set.toList $ Set.filter verifiesNegation (Set.powerSet lit)
+        act = nub $ concat act'
+        lit = Set.filter isLiteral clo
+        condition x y z = isTransitionAllowedG x y z clo act' sm a
 
--- NOTE: THIS IS USELESS. TENHO DE FAZER PARA UM CASO MAIS GERAL EM QUE JÁ TENHO VÁRIOS AUTOMATOS JUNTOS.
+isTransitionAllowedG :: State -> -- original state
+                        State -> -- goal state
+                        AlphabetSymbol -> -- alphabet symbol
+                        Set.Set Formula -> -- closure of the formula
+                        [[Action]] -> -- useful actions of all agents
+                        Map.Map State [Set.Set Formula] -> -- tracking the states
+                        GlobalFormula -> -- we need the formula to obtain the sub formulas of an agent
+                        Bool -- True iff the transition is possible
+isTransitionAllowedG o g sigma clo act sm a =
+  all (\x -> isActionOfAgent action x act || ((origin!!(x-1) == goal!!(x-1)) && localVal!!(x-1)==(Set.filter isPropSymbol (origin!!(x-1))))) agents && -- if it is not action it must remain unchanged
+  all (\x -> all (\y -> not (isActionOfAgent action x act) || Set.member (tailFormula y) (goal!!((communicationAgent y) - 1)))(Set.filter isCommunication (goal!!(x - 1)))) agents &&
+  all checkCondition agents &&
+  all (\x -> not (isActionOfAgent action x act)|| isTransitionAllowed o sm clo (x-1) g && Set.filter isLiteral (origin!!(x-1)) == localVal!!(x-1)) agents
+  where origin = fromJust $ Map.lookup o sm -- [Set1, Set2, Set3]
+        goal   = fromJust $ Map.lookup g sm -- [Set1', Set2', Set3']
+        agents = [1..(length origin)] --list with all the agents
+        localVal = map (\x -> downArrow valuation x a) agents
+        valuation = fst sigma
+        action = snd sigma
+        --sm = stateMap auto -- maping to the states
+        lits = map literals origin --list with all literals in each set od the state
+        checkCondition x = all (\f -> (all (\j -> Set.member f (goal!!(x - 1)) || not(isActionOfAgent action j act && Set.member (tailFormula f) (goal!!(j - 1)) )) agents)) (filter isCommunication (subFormulasAgent a x))
 
--- makeAcceptingSetsG :: States -> [Set.Set State]
--- makeAcceptingSetsG =
---   [Set.fromList s | s <- states, helper s]
---   where helper :: State -> Bool
---         helper
-
--- makeDeltaG :: [State] -> -- States in the automaton
---               Map.Map State [Set.Set Formula] -> -- mapping the state
---               GNBA ->
---               GNBA ->
---               Map.Map State [(AlphabetSymbol, State)]
--- makeDeltaG s sm g1 g2 =
---   foldl (`addStateImagesG` sm g1 g2) delta s
---   where delta = Map.fromList (zip s (take (length s) (repeat [])))
---
--- addStateImagesG :: State ->
---                    [State] -> -- all other states
---                    Map.Map State [Set.Set Formula] ->
---                    GNBA ->
---                    GNBA ->
---                    Map.Map State [(AlphabetSymbol, State)]
--- addStateImagesG s ss sm g1 g2 =
---   Map.insertWith (++) s (transitionsStateG s ss sm g1 g2) sm
---
--- -- all possible transitions for a state in a given automaton
--- transitionsStateG :: State ->
---                      [State] -> -- all other states
---                      Map.Map State [Set.Set Formula] ->
---                      GNBA ->
---                      GNBA ->
---                      Set.Set Formula -> -- literals. tenho de por nas outras
---                      [(AlphabetSymbol, State)]
--- transitionsStateG s ss sm l g1 g2 =
---   [(symbol, state) | symbol <- possibleSymbols, state <- pS, isTransitionAllowedG s symbol state]
---   where possibleSymbols = [(s, a) | s <- Set.toList (Set.powerSet l), a <- actions]
---         actions = nub $ actions g1 ++ actions g2
---
--- -- gets a state a symbol and a state and checks is the transition is allowed
--- isTransitionAllowedG :: State -> -- origin
---                         PropositionalSymbol ->
---                         State -> -- Goal State
---                         Map.Map State [Set.Set Formula] -> -- mapping to the states
---                         GNBA ->
---                         GNBA ->
---                         Bool
--- isTransitionAllowedG o p d sm g1 g2 =
---   (a1 || remainedUnchaged 1 o d) &&
---   (a2 || remainedUnchaged 2 o d) &&
---   (not a1 || isTransitionAllowedG 1 o d ) && -- to be defined
---   (not a2 || isTransitionAllowedG 1 o d ) && -- to be defined (NOTE: use the fact the the local automata is know to us)
---   (not (a2 and ) ||)
---   where isActionOf a i = if i == 1
---                             then elem a (concat actions g1)
---                             else elem a (concat actions g2)
---         a1 = isActionOf action 1
---         a2 = isActionOf action 2
---         action = getAction p
---         getAction (_, a) = a
+isActionOfAgent :: Action -> Agent -> [[Action]] -> Bool
+isActionOfAgent a i act' =
+  a `elem` act
+  where act = act' !! (i - 1)
 
 {-
 ================================================================================
@@ -145,7 +145,7 @@ makeLocalGNBA :: GlobalFormula -> -- formula for which the automaton is made
 makeLocalGNBA a i n act =
   GNBA {
         states = s,
-        inicialStates = makeInitialStates sm s,
+        inicialStates = makeInitialStates sm s a,
         stateMap = sm,
         finalStates = makeAcceptingSets clo sm s,
         delta = makeDelta s sm clo lit act,
@@ -198,14 +198,15 @@ transitionsState ms li s states act clo =
 
 -- Returns all the states from one state
 possibleStates :: State -> Map.Map State [Set.Set Formula] -> [State] -> Set.Set Formula -> [State]
-possibleStates s ms states clo = filter (isTransitionAllowed s ms clo) states
+possibleStates s ms states clo = filter (isTransitionAllowed s ms clo 0) states
 
 isTransitionAllowed :: State -> -- departure state
                        Map.Map State [Set.Set Formula] -> -- track the states
                        Set.Set Formula -> -- closure. Necessary for one side of the implication
+                       Int -> -- Checks for any given set in the state. In the case og local automatons should always be 0
                        State -> -- destiny state
                        Bool     -- True iff the transition is allowed
-isTransitionAllowed s ms clo d =
+isTransitionAllowed s ms clo level d =
   -- Implication on the left
   (all (\x -> x `Set.member` origin || tailFormula x `Set.notMember` destiny) nextFormulasclo &&
   all (\x -> x `Set.member` origin || not (x `Set.member`destiny && tailFormula x `Set.member` origin)) globalFormulasclo)
@@ -213,8 +214,8 @@ isTransitionAllowed s ms clo d =
    -- Implication on the right
   (all (\x -> tailFormula x `Set.member` destiny) nextFormulas &&
   all (\x -> tailFormula x `Set.member` origin && x `Set.member`destiny) globalFormulas)
-  where origin            = head $ fromJust (Map.lookup s ms)
-        destiny           = head $ fromJust (Map.lookup d ms) -- raises an error when not present
+  where origin            = (fromJust (Map.lookup s ms))!!level
+        destiny           = (fromJust (Map.lookup d ms))!!level -- raises an error when not present
         nextFormulas      = Set.filter isNext origin
         globalFormulas    = Set.filter isGlobally origin
         nextFormulasclo   = Set.filter isNext clo
@@ -228,10 +229,12 @@ makeStateMap s s' = Map.fromList (zip s (map aux s'))
 
 makeInitialStates :: Map.Map State [Set.Set Formula] -> -- the map to the states
                      [State] -> -- all the states in the automaton
+                     GlobalFormula -> -- we must ensure the formula is in the inicial state
                      [State]
-makeInitialStates sm s =
+makeInitialStates sm s a =
   filter faux s
-  where faux x = all (not . hasCommunicationFormulas) (fromJust $ Map.lookup x sm)
+  where faux x = all (\q -> noCom q && ((FromGlobal a) `Set.member` q)) (fromJust $ Map.lookup x sm)
+        noCom = not . hasCommunicationFormulas
         -- this throws an error if a key is not found
 
 makeAcceptingSets :: Set.Set Formula -> -- Closure of the formula
@@ -285,7 +288,7 @@ hasX :: Set.Set Formula -> Bool
 hasX s = Set.null $ Set.filter isNext s
 
 hasCommunicationFormulas :: Set.Set Formula -> Bool
-hasCommunicationFormulas s =  Set.findMin $ Set.map (isCommunication) s
+hasCommunicationFormulas s =  any (isCommunication) s -- can be improved with any
 
 iElementarySets :: GlobalFormula -> -- formula used for the closure
                    Agent ->
@@ -332,7 +335,8 @@ isIElementary b i a n = if not (Set.null b)
 --       getImplicationSubFormulas
 verifiesImplication :: Set.Set Formula -> GlobalFormula -> Int -> Bool
 verifiesImplication b a n =
-  Set.findMin $ Set.map (helper b) implications
+  all (helper b) implications
+  --Set.findMin $ Set.map (helper b) implications
   where implications = Set.filter isImplication clo
         clo = closureFormula a n
         helper set f@(FromLocal (Implies f1 f2)) = if Set.member f set
@@ -350,7 +354,7 @@ verifiesImplication b a n =
 -}
 verifiesNegation :: Set.Set Formula -> Bool
 verifiesNegation set =
-  Set.findMin $ Set.map (helper set) set
+  all (helper set) set
   where helper b f = not (Set.member f b) || not (Set.member (negateFormula f) b)
 
 {-|
@@ -358,7 +362,8 @@ verifiesNegation set =
 -}
 verifiesGlobally :: Set.Set Formula -> Bool
 verifiesGlobally set =
-  Set.findMin $ Set.map (helper set) set
+  --Set.findMin $ Set.map (helper set) set
+  all (helper set) set
   where helper b (FromLocal (Globally f)) = Set.member (FromLocal f) b
         helper _ _                        = True
 
@@ -369,7 +374,8 @@ verifiesGlobally set =
 -}
 verifiesIConsistent :: Set.Set Formula -> Agent -> GlobalFormula -> Int -> Bool
 verifiesIConsistent b i a n =
-  Set.findMin $ Set.map (helper b) l
+  --Set.findMin $ Set.map (helper b) l
+  all (helper b) l
   where l = Set.filter ( `isAtAgent` i ) clo
         clo = closureFormula a n
         helper set f@(FromGlobal (Local _ f2)) = if Set.member f set
@@ -384,7 +390,8 @@ verifiesMaximal :: Set.Set Formula ->
                    GlobalFormula -> -- Formula used for the closure
                    Bool
 verifiesMaximal b n a =
-  Set.findMin $ Set.map (helper b) clo
+  --Set.findMin $ Set.map (helper b) clo
+   all (helper b) clo
   where clo = closureFormula a n
         helper set f = (Set.member f set) || Set.member (negateFormula f) set
 
@@ -401,3 +408,10 @@ psiSetsL  = GImplies (Local 1 psiSetsL1) (Local 2 psiSetsL2)
 f1 = Next (PropositionalSymbol "p")
 f2 = Globally (PropositionalSymbol "q")
 alpha = GImplies (Local 1 f1) (Local 2 f2)
+
+f1c = (Next (Comunicates 2 (PropositionalSymbol "p")))
+alphac = Local 1 f1c
+
+f1cLarge = (Next (Globally (Implies (PropositionalSymbol "p") (Comunicates 2 (PropositionalSymbol "q")))))
+f2cLarge = (Next ( PropositionalSymbol "q"))
+alphacLarge = GImplies (Local 1 f1cLarge) (Local 2 f2cLarge)
