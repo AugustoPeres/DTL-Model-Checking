@@ -15,6 +15,9 @@ import           DTLFormula
 --       More getters have to be defined
 --
 --      Fazer o automato receber os simbolos proposicionais
+--
+--      Possible Optimizations : -> Fazer com que o closure escolha apenas conjuntos
+--                                  de um dado tamnho
 
 -- This part is designeted to building the automatons for the formula
 -- We use the same data types for both local automatons and global automatons
@@ -156,7 +159,7 @@ makeLocalGNBA a i n act =
         sm = makeStateMap s necessarySets
         lit = Set.union propSymbs (Set.map negateFormula propSymbs)
         --
-        necessarySets = iElementarySets a i n propSymbs
+        necessarySets = filter (FromGlobal a `Set.member` ) (iElementarySets a i n propSymbs)
         propSymbs = Set.fromList $ filter isPropSymbol subForms
         subForms = subFormulasAgent a i
 
