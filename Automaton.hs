@@ -18,6 +18,11 @@ import           DTLFormula
 --
 --      Possible Optimizations : -> Fazer com que o closure escolha apenas conjuntos
 --                                  de um dado tamnho
+--
+--      Fazer com que os simbolos lidos não tenha as negações. Ou seja o vazio passa
+--      a representar o nop p
+--
+--      BUG: Automaton para alpha. O estado 4 devia ir para, por exemplo o estado 2
 
 -- This part is designeted to building the automatons for the formula
 -- We use the same data types for both local automatons and global automatons
@@ -82,12 +87,9 @@ makeDeltaG :: Set.Set Formula -> --closure of the formula
 makeDeltaG clo act' sm a s =
   Map.fromList [(state, [(symbol, state') | symbol <- possibleSymbols, state' <- s, condition state state' symbol]) | state <- s]
   where possibleSymbols = [(val, a) | val <- valuations, a <- act]
-        -- da forma como isto esta definido tenho literais a mais
-        --valuations = Set.toList $ Set.filter (all (not . isNegation)) (Set.powerSet lit)
-        -- TODO:corrigir aqui isto
-        valuations = Set.toList $ Set.filter verifiesNegation (Set.powerSet lit)
+        valuations = Set.toList $ Set.powerSet psymbs
         act = nub $ concat act'
-        lit = Set.filter isLiteral clo
+        psymbs = Set.filter isPropSymbol clo
         condition x y z = isTransitionAllowedG x y z clo act' sm a
 
 isTransitionAllowedG :: State -> -- original state
@@ -102,7 +104,7 @@ isTransitionAllowedG o g sigma clo act sm a =
   all (\x -> isActionOfAgent action x act || ((origin!!(x-1) == goal!!(x-1)) && localVal!!(x-1)==(Set.filter isPropSymbol (origin!!(x-1))))) agents && -- if it is not action it must remain unchanged
   all (\x -> all (\y -> not (isActionOfAgent action x act) || Set.member (tailFormula y) (goal!!((communicationAgent y) - 1)))(Set.filter isCommunication (goal!!(x - 1)))) agents &&
   all checkCondition agents &&
-  all (\x -> not (isActionOfAgent action x act)|| isTransitionAllowed o sm clo (x-1) g && Set.filter isLiteral (origin!!(x-1)) == localVal!!(x-1)) agents
+  all (\x -> not (isActionOfAgent action x act)|| isTransitionAllowed o sm clo (x-1) g && Set.filter isPropSymbol (origin!!(x-1)) == localVal!!(x-1)) agents
   where origin = fromJust $ Map.lookup o sm -- [Set1, Set2, Set3]
         goal   = fromJust $ Map.lookup g sm -- [Set1', Set2', Set3']
         agents = [1..(length origin)] --list with all the agents
