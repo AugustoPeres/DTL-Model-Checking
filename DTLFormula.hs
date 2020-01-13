@@ -25,8 +25,6 @@ module DTLFormula
   , communicationAgent
   ) where
 
--- TODO: Corrigir recursivamente a profundidade das fórmulas
-
 import           Data.Maybe
 import qualified Data.Set   as Set
 
