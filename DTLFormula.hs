@@ -23,6 +23,7 @@ module DTLFormula
   , isPropSymbol
   , tailFormula
   , communicationAgent
+  , getSubFormulasImplication
   ) where
 
 import           Data.Maybe
@@ -39,9 +40,9 @@ data LocalFormula = PropositionalSymbol PropSymbol
                   | Not LocalFormula
                     deriving (Eq, Ord)
 
-data GlobalFormula = Local Agent LocalFormula
+data GlobalFormula = GImplies GlobalFormula GlobalFormula
+                   | Local Agent LocalFormula
                    | GNot GlobalFormula
-                   | GImplies GlobalFormula GlobalFormula
                      deriving (Eq, Ord)
 
 data Formula = FromGlobal GlobalFormula | FromLocal LocalFormula deriving (Eq, Ord)
@@ -190,6 +191,13 @@ tailFormula (FromGlobal (GNot f))               = FromGlobal f
 communicationAgent :: Formula -> Agent
 communicationAgent (FromLocal (Comunicates i _)) = i
 communicationAgent _                             = undefined
+
+-- | receives a formula psi1 => psi2 and returns
+--   [psi1, psi2].
+getSubFormulasImplication :: Formula -> [Formula]
+getSubFormulasImplication (FromLocal (Implies f1 f2))   = [FromLocal f1, FromLocal f2]
+getSubFormulasImplication (FromGlobal (GImplies f1 f2)) = [FromGlobal f1, FromGlobal f2]
+getSubFormulasImplication _ = undefined
 
 psiTest :: LocalFormula
 psiTest = Implies (Globally (PropositionalSymbol "p") ) (Comunicates 2 (PropositionalSymbol "q"))

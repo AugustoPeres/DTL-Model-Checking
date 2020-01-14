@@ -16,11 +16,6 @@ import           DTLFormula
 --
 --      Possible Optimizations : -> Fazer com que o closure escolha apenas conjuntos
 --                                  de um dado tamnho
---
---      Fazer com que os simbolos lidos não tenha as negações. Ou seja o vazio passa
---      a representar o nop p
---
---      BUG: Automaton para alpha. O estado 4 devia ir para, por exemplo o estado 2
 
 
 -- This part is designeted to building the automatons for the formula
@@ -51,7 +46,7 @@ makeGlobalGNBA a n act =
   GNBA { states = s,
          inicialStates = makeInitialStates sm s a,
          stateMap = sm,
-         finalStates = [],
+         finalStates = makeAcceptingSetsG sm a n s,
          delta = makeDeltaG clo act sm a s,
          actions = act
        }
@@ -60,6 +55,24 @@ makeGlobalGNBA a n act =
         sm = makeStateMapG s stateSets
         stateSets = makeStateSetsG l
         clo = closureFormula a n
+
+-- | Makes the accepting sets for the generalized Buchi automaton
+--   Using the condition that we check Ga in q or (a) not in q
+--   for the local formulas of some given agent.
+makeAcceptingSetsG :: Map.Map State [Set.Set Formula] -> -- ^ mapping from the states to the corresponding sets
+                      GlobalFormula -> -- ^ Global Formula
+                      Int -> -- ^ number of agents present in the global automatons
+                      [State] -> -- ^ all the states in the automaton
+                      [Set.Set State] -- ^ Return: a list with the accepting sets
+makeAcceptingSetsG sm a n states =
+  concat [helper agent | agent <- [1..n]]
+  where helper :: Agent -> [Set.Set State]
+        helper i = [makeSet f i| f <- filter isGlobally (subFormulasAgent a i)]
+        makeSet :: Formula -> Agent -> Set.Set State
+        makeSet f i' = Set.fromList $ filter (\x -> conditionHolds f ((fromJust $ Map.lookup x sm)!!(i'-1))) states
+        conditionHolds :: Formula -> Set.Set Formula -> Bool
+        conditionHolds f set = f `Set.member` set || tailFormula f `Set.notMember` set
+
 
 -- | Receives a list of local Automatons and computes the
 --   states on the Global automaton.
@@ -342,23 +355,19 @@ isIElementary b i a n = if not (Set.null b)
   Checks if the condition f1 => f1 iff ~f1 in B or f2 in B for all
   the implications in the closure of a hold
 -}
--- TODO: Make this function prettier with isImplication and the something lieke
---       getImplicationSubFormulas
 verifiesImplication :: Set.Set Formula -> GlobalFormula -> Int -> Bool
 verifiesImplication b a n =
   all (helper b) implications
-  --Set.findMin $ Set.map (helper b) implications
   where implications = Set.filter isImplication clo
         clo = closureFormula a n
-        helper set f@(FromLocal (Implies f1 f2)) = if Set.member f set
-                                                      then aux
-                                                      else not aux
-                                                    where aux = Set.member (FromLocal (Not f1)) set || Set.member (FromLocal f2) set
-        helper set f@(FromGlobal (GImplies f1 f2)) = if Set.member f set
-                                                      then aux
-                                                      else not aux
-                                                    where aux = Set.member (FromGlobal (GNot f1)) set || Set.member (FromGlobal f2) set
-        helper _ _                                  = undefined
+        helper set f = if Set.member f set
+                          then aux
+                          else not aux
+                       where aux = Set.member f2 set ||
+                                   Set.member (negateFormula f1) set
+                             f1 = head subF
+                             f2 = subF!!1
+                             subF = getSubFormulasImplication f
 
 {-|
   Checks if the condition psi in B => ~psi not in B
@@ -373,7 +382,6 @@ verifiesNegation set =
 -}
 verifiesGlobally :: Set.Set Formula -> Bool
 verifiesGlobally set =
-  --Set.findMin $ Set.map (helper set) set
   all (helper set) set
   where helper b f = not (isGlobally f) || tailFormula f `Set.member` b
 
@@ -384,17 +392,11 @@ verifiesGlobally set =
 -}
 verifiesIConsistent :: Set.Set Formula -> Agent -> GlobalFormula -> Int -> Bool
 verifiesIConsistent b i a n =
-  --Set.findMin $ Set.map (helper b) l
   all (helper b) l
   where l = Set.filter ( `isAtAgent` i ) clo
         clo = closureFormula a n
         helper set f = (not (tailFormula f `Set.member` set) || f `Set.member` set) &&
                        (not (f `Set.member` set) || tailFormula f `Set.member` set)
-        -- helper set f@(FromGlobal (Local _ f2)) = if Set.member f set
-        --                                             then aux
-        --                                             else not aux
-        --                                          where aux = Set.member (FromLocal f2) set
-        -- helper _ _                             = undefined
 
 {-| Checks if a set is maximal-}
 verifiesMaximal :: Set.Set Formula ->
@@ -417,7 +419,7 @@ psiSetsL1 = PropositionalSymbol "p"
 psiSetsL2 = PropositionalSymbol "q"
 psiSetsL  = GImplies (Local 1 psiSetsL1) (Local 2 psiSetsL2)
 
-f1 = Next (PropositionalSymbol "p")
+f1 = Globally (PropositionalSymbol "p")
 f2 = Globally (PropositionalSymbol "q")
 alpha = GImplies (Local 1 f1) (Local 2 f2)
 
