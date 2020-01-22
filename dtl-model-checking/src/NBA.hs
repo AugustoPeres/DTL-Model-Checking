@@ -27,11 +27,16 @@ data NBA a = NBA { states        :: [State],
 instance Show a => FiniteGraphRepresentable (NBA a) where
   -- TODO: Falta meter aqui as restantes coisas que fazem o graphciz file
   toGraphviz a =
-    Map.foldrWithKey (\k x b -> b ++ showTransitions k) "" d
-    where d = delta a
+    "digraph finite_state_machine {\n" ++
+    "node[shape=doublecircle width=2 height=2 fontsize=50];" ++ foldr (\a b -> b ++ " " ++ show a ++ ";") "" f ++ "\n" ++
+    "edge[decorate=1 minlen=2];\nnode[width=2 height=2 fontsize=50 shape=circle]\n" ++
+    Map.foldrWithKey (\k x b -> b ++ showTransitions k) "" d ++
+    "}"
+    where f = finalStates a
+          d = delta a
           showTransitions k =
             unlines $ map
-                      (\x->show k ++ "->" ++ show(snd x) ++ "[label=\"" ++ show(fst x) ++ "\"];")
+                      (\x->show k ++ "->" ++ show(snd x) ++ "[label=" ++ show(fst x) ++ "];")
                       (fromMaybe [] (Map.lookup k d))
 
 
@@ -58,8 +63,8 @@ instance Show a => FiniteGraphRepresentable (NBA a) where
 -- | Returns true if a node is never accepting.
 --   We say that a node is never accepting iff there is no
 --   accepting run leading from it.
---   We compute strongly connected components and remove all nodes
---   that have no path into a SCC containing final states.
+--   We compute all strongly connected components and then
+--   remove all nodes that are in SCC without any final states
 isNeverAcceptingStateQ :: NBA a -> -- ^ Automaton
                           State -> -- ^ State querried
                           Bool
@@ -71,7 +76,7 @@ existsPathBetweenQ :: NBA a -> -- ^ Automaton
                       State -> -- ^ Departure State
                       State -> -- ^ Arrival State
                       Bool
-existsPathBetweenQ a q q' = undefined
+existsPathBetweenQ a q q' = q' `elem` bfs a [q] []
 
 -- | Returns true iff there is a path from an inicial state to
 --   the querried state in the given automaton.
@@ -116,6 +121,20 @@ getNeighbours :: NBA a -> -- ^ Automaton
 getNeighbours a s =
   Map.lookup s d
   where d = delta a
+
+-- | Given a state computes all the states that can be reached from that
+--   state.
+--   The function uses a Q to make the visits while tracking the visited states.
+--   Thus it should be called as bfs automaton [node] []
+--  NOTE: We always assume that a node can visit himself
+bfs :: NBA a -> -- ^ Automaton
+       [State] -> -- ^ Q used in the search
+       [State] -> -- ^ visited states
+       [State]
+bfs a [] v = v
+bfs a (x:xs) v =
+  bfs a (xs++[s | s<-neigs, s `notElem` (x:v)]) (x:v)
+  where neigs = map snd (fromMaybe [] (getNeighbours a x))
 
 -- ---------------------------------------------------------------------
 -- End of getters for the automaton
@@ -165,3 +184,15 @@ toNBA g =
                             sigma<-nub $ map fst (fromJust (Map.lookup q d)),
                             (sigma, fst (fromJust (Map.lookup s sm))) `elem` fromJust (Map.lookup q d),
                             snd (fromJust $ Map.lookup s sm) == i]
+
+
+
+
+-- -----------------------------------------------------------------
+-- Test automatons and other variables
+-- -----------------------------------------------------------------
+g = NBA { states = [1, 2, 3],
+          finalStates = [1],
+          inicialStates = [1, 2],
+          delta = Map.fromList [(1, [("a", 1), ("b", 2), ("a", 3)]) , (2, [("b", 1)]), (3, [])]
+        }
