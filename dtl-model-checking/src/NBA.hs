@@ -5,7 +5,7 @@ module NBA
 
 import qualified Automaton       as GNBA
 import           CommonTypes
-import           Data.List       (nub, (\\))
+import           Data.List       (nub, sort, union, (\\))
 import qualified Data.Map.Strict as Map
 import           Data.Maybe
 import qualified Data.Set        as Set
@@ -89,6 +89,20 @@ deleteNeverAcceptingStates :: NBA a -> -- ^ Automaton
                               NBA a    -- ^ Automaton without states
 deleteNeverAcceptingStates a = deleteStates a (getNeverAcceptingStates a)
 
+compressAlphaBalls :: Eq a => NBA a -> NBA a
+compressAlphaBalls a =
+  deleteStates NBA {states=s, inicialStates=i, finalStates=newFinalStates, delta=d'} delstates
+  where alphaBalls     = getAlphaBalls a
+        delstates      = concatMap tail alphaBalls
+        newFinalStates = map head alphaBalls `union` finalStates a
+        alphaStates    = concat alphaBalls
+        s = states a
+        i = inicialStates a
+        d' = Map.mapWithKey
+             (\k y -> if k `elem` alphaStates then map (\(x, _) -> (x, k)) y else y)
+             d
+        d  = delta a
+
 -- ---------------------------------------------------------------------
 -- End of transformation functions
 -- ---------------------------------------------------------------------
@@ -97,21 +111,6 @@ deleteNeverAcceptingStates a = deleteStates a (getNeverAcceptingStates a)
 -- Query functions: These functions are used to answer True or False
 --                  about the state of the automaton.
 -- ---------------------------------------------------------------------
-
--- | This function decomposes the automaton in its strongly
---   maximal conected components using the Kosaraju's algorithm
-kosaraju :: NBA a ->
-            [[State]] -- ^ list with strongly connected maximal conected components
-kosaraju a =
-  helper ord [] []
-  where ord = dfs a [1] [] True
-        aT  = transpose a
-        helper :: [State] -> [State] -> [[State]] -> [[State]]
-        helper order visited scc
-          | null order = scc
-          | otherwise  = helper (order \\ b) (b ++ visited) (b:scc)
-          where b = dfs aT [head order] [] True \\ visited
-
 
 -- | Returns true if a node is never accepting.
 --   We say that a node is never accepting iff there is no
@@ -156,6 +155,30 @@ isDeadStateQ a s =
   null $ fromMaybe [] neigs
   where neigs = getNeighbours a s
 
+-- | isAlphaBall returns true if a list of nodes
+--   form an alpha ball.
+---  NOTE: We are assuming that the input is already a scc
+isAlphaBall :: Eq a => NBA a -> [State] -> Bool
+isAlphaBall a scc =
+  any (`elem` f) scc && -- there is an accepting state
+  foldr (\y b -> b && null (nub (map snd (fromMaybe [] (getNeighbours a y))) \\ scc)) True scc && -- there are no transitions leaving
+  transitionWithSameLetters a scc -- transition is done under the same letter
+  where f       = finalStates a
+        d       = delta a
+
+
+
+-- | Returns true if all transitions for
+--   the states occur under exactly yhe same propositional letters
+transitionWithSameLetters :: Eq a => NBA a -> [State] -> Bool
+transitionWithSameLetters a scc =
+  allEqual letters
+  where letters = map (map fst . (\x -> fromMaybe [] (Map.lookup x d))) scc
+        d       = delta a
+        allEqual []     = True
+        allEqual (x:xs) = foldr (\y b -> b && null (y\\x) && null (x\\y)) True xs
+
+
 -- ---------------------------------------------------------------------
 -- End of query functions
 -- ---------------------------------------------------------------------
@@ -167,6 +190,35 @@ isDeadStateQ a s =
 --                            For example: if we want to return the
 --                            the reachable states from some other state
 -- ---------------------------------------------------------------------
+
+-- | This function finds all the alpha-balls in the automaton
+--   alpha-ball:
+--      * Strongly connected component
+--      * There is a unique label for the transitions inside the ball
+--      * There is no transition leaving the ball
+--      * Cotains an accepting state
+getAlphaBalls :: Eq a => NBA a -> [[State]]
+getAlphaBalls a =
+  filter (isAlphaBall a) scc
+  where scc = kosaraju a
+
+-- | This function decomposes the automaton in its strongly
+--   maximal conected components using the Kosaraju's algorithm
+kosaraju :: NBA a ->
+            [[State]] -- ^ list with strongly connected maximal conected components
+kosaraju a =
+  helper ord [] []
+  where ord =  makeOrder $ dfs a [1] [] True
+        makeOrder ord
+          | s == sort ord = ord
+          | otherwise = makeOrder (ord ++ (dfs a [head (s \\ ord)] ord True \\ ord))
+        s = sort $ states a
+        aT  = transpose a
+        helper :: [State] -> [State] -> [[State]] -> [[State]]
+        helper order visited scc
+          | null order = scc
+          | otherwise  = helper (order \\ b) (b ++ visited) (b:scc)
+          where b = dfs aT [head order] [] True \\ visited
 
 -- | Given a state returns all its neigbours in a list according to
 --   the alphabet symbol that allow it's transition.
@@ -284,12 +336,36 @@ g3 = NBA {
                                 ]
          }
 
+gAlphaBall = NBA {
+           states = [1, 2, 3, 4, 5],
+           finalStates = [2, 4],
+           inicialStates = [],
+           delta = Map.fromList [ (1, [("", 2)]),
+                                  (2, [("", 3)]),
+                                  (3, [("", 1)]),
+                                  (4, [("a", 5)]),
+                                  (5, [("a", 4)])
+                                ]
+         }
+
+gAlphaBall2 = NBA {
+           states = [1, 2, 3, 4, 5],
+           finalStates = [2, 4],
+           inicialStates = [],
+           delta = Map.fromList [ (1, [("", 4)]),
+                                  (2, [("", 3)]),
+                                  (3, [("", 1)]),
+                                  (4, [("a", 5)]),
+                                  (5, [("a", 4)])
+                                ]
+         }
+
 gTesteComponents = NBA {
                          states = [0..13],
-                         finalStates = [1, 7],
+                         finalStates = [1, 7, 13, 0, 6],
                          inicialStates = [],
-                         delta = Map.fromList [ (0, [("", 5), ("", 1)]),
-                                                (1, [("", 2), ("", 3), ("", 8)]),
+                         delta = Map.fromList [ (0, [("", 0), ("", 0)]),
+                                                (1, [("", 2), ("", 8)]),
                                                 (2, [("", 0)]),
                                                 (3, [("", 2), ("", 4), ("", 7)]),
                                                 (4, [("", 6)]),
@@ -300,7 +376,7 @@ gTesteComponents = NBA {
                                                 (9, [("", 7)]),
                                                 (10, [("", 11), ("", 13)]),
                                                 (11, [("", 9)]),
-                                                (12, [("", 13)]),
-                                                (13, [("", 12)])
+                                                (12, [("a", 13), ("", 13)]),
+                                                (13, [("", 12), ("a", 12)])
                                               ]
                        }
