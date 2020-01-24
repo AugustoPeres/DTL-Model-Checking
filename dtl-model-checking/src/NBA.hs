@@ -5,7 +5,7 @@ module NBA
 
 import qualified Automaton       as GNBA
 import           CommonTypes
-import           Data.List       (nub)
+import           Data.List       (nub, (\\))
 import qualified Data.Map.Strict as Map
 import           Data.Maybe
 import qualified Data.Set        as Set
@@ -49,22 +49,50 @@ instance Show a => FiniteGraphRepresentable (NBA a) where
 --                            For example deleting or adding a state.
 -- ---------------------------------------------------------------------
 
+-- | This function reverses the automaton. Meaning that all
+--   arrows will be reversed.
+--   Returns the new reversed automaton
+transpose :: NBA a -> NBA a
+transpose a =
+  NBA {states = s, inicialStates = i, finalStates = f, delta = d'}
+  where s = states a
+        i = inicialStates a
+        f = finalStates a
+        d = delta a
+        d' = Map.fromList [(k, helper k) | k<-s]
+        helper key = Map.foldrWithKey (\k a b -> b ++ map (helper2 k) (filter (\x->snd x==key) a)) [] d
+        helper2 key (a,_)=(a,key)
+
 -- ---------------------------------------------------------------------
 -- End of transformation functions
 -- ---------------------------------------------------------------------
-
-
 
 -- ---------------------------------------------------------------------
 -- Query functions: These functions are used to answer True or False
 --                  about the state of the automaton.
 -- ---------------------------------------------------------------------
 
+-- | This function decomposes the automaton in its strongly
+--   maximal conected components using the Kosaraju's algorithm
+kosaraju :: NBA a ->
+            [[State]] -- ^ list with strongly connected maximal conected components
+kosaraju a =
+  helper ord [] []
+  where ord = dfs a [1] [] True
+        aT  = transpose a
+        helper :: [State] -> [State] -> [[State]] -> [[State]]
+        helper order visited scc
+          | null order = scc
+          | otherwise  = helper (order \\ b) (b ++ visited) (b:scc)
+          where b = dfs aT [head order] [] True \\ visited
+
+
 -- | Returns true if a node is never accepting.
 --   We say that a node is never accepting iff there is no
 --   accepting run leading from it.
 --   We compute all strongly connected components and then
---   remove all nodes that are in SCC without any final states
+--   remove all nodes that don't have a path leading into a
+--   SCC that has a final state.
 isNeverAcceptingStateQ :: NBA a -> -- ^ Automaton
                           State -> -- ^ State querried
                           Bool
@@ -76,7 +104,7 @@ existsPathBetweenQ :: NBA a -> -- ^ Automaton
                       State -> -- ^ Departure State
                       State -> -- ^ Arrival State
                       Bool
-existsPathBetweenQ a q q' = q' `elem` bfs a [q] []
+existsPathBetweenQ a q q' = q' `elem` dfs a [q] [] False
 
 -- | Returns true iff there is a path from an inicial state to
 --   the querried state in the given automaton.
@@ -125,17 +153,22 @@ getNeighbours a s =
 -- | Given a state computes all the states that can be reached from that
 --   state.
 --   The function uses a Q to make the visits while tracking the visited states.
---   Thus it should be called as bfs automaton [node] []
---  NOTE: We always assume that a node can visit himself
-bfs :: NBA a -> -- ^ Automaton
+--   Thus it should be called as dfs automaton [node] []
+--   NOTE: When using n = True on the input the function will assume that "a"
+--         reaches "a" even when no self loop exists.
+--   NOTE: THIS RETURNS [a] even if a is not on the list of possible node
+--         Should make this return Nothing when that happens
+dfs :: NBA a -> -- ^ Automaton
        [State] -> -- ^ Q used in the search
        [State] -> -- ^ visited states
+       Bool -> -- ^ Varible to decide if a visits a even when no edges are present
        [State]
-bfs a [] v = v
-bfs a (x:xs) v =
-  bfs a (xs++[s | s<-neigs, s `notElem` (x:v)]) (x:v)
+dfs a [] v _ = v
+dfs a (x:xs) v b
+  | b = dfs a ([s | s<-neigs, s `notElem` (x:v)]++xs) newvisited True
+  | otherwise = dfs a ([s | s<-neigs, s `notElem` (x:v)]++xs) v True
   where neigs = map snd (fromMaybe [] (getNeighbours a x))
-
+        newvisited = if x `elem` v then v else v++[x]
 -- ---------------------------------------------------------------------
 -- End of getters for the automaton
 -- ---------------------------------------------------------------------
@@ -194,5 +227,47 @@ toNBA g =
 g = NBA { states = [1, 2, 3],
           finalStates = [1],
           inicialStates = [1, 2],
-          delta = Map.fromList [(1, [("a", 1), ("b", 2), ("a", 3)]) , (2, [("b", 1)]), (3, [])]
+          delta = Map.fromList [(1, [("a", 1), ("b", 2), ("a", 3)]) , (2, [("b", 1), ("a", 3)]), (3, [])]
         }
+
+g2 = NBA { states = [1, 2, 3, 4],
+           finalStates = [1],
+           inicialStates = [1, 2],
+           delta = Map.fromList [(1, [("a", 1), ("b", 2), ("a", 3)]),
+                                 (2, [("b", 1), ("a", 3), ("a", 4)]),
+                                 (3, [("b", 2), ("c", 4)]),
+                                 (4, [])]
+        }
+
+g3 = NBA {
+           states = [1, 2, 3, 4, 5],
+           finalStates = [],
+           inicialStates = [],
+           delta = Map.fromList [ (1, [("", 2), ("", 4)]),
+                                  (2, [("", 3)]),
+                                  (3, [("", 1)]),
+                                  (4, [("", 5)]),
+                                  (5, [("", 4)])
+                                ]
+         }
+
+gTesteComponents = NBA {
+                         states = [0..13],
+                         finalStates = [],
+                         inicialStates = [],
+                         delta = Map.fromList [ (0, [("", 5), ("", 1)]),
+                                                (1, [("", 2), ("", 3), ("", 8)]),
+                                                (2, [("", 0)]),
+                                                (3, [("", 2), ("", 4), ("", 7)]),
+                                                (4, [("", 6)]),
+                                                (5, [("", 4)]),
+                                                (6, [("", 5)]),
+                                                (7, [("", 8), ("", 10), ("", 12)]),
+                                                (8, [("", 11)]),
+                                                (9, [("", 7)]),
+                                                (10, [("", 11), ("", 13)]),
+                                                (11, [("", 9)]),
+                                                (12, [("", 13)]),
+                                                (13, [("", 12)])
+                                              ]
+                       }
