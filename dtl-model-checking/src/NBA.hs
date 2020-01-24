@@ -63,6 +63,32 @@ transpose a =
         helper key = Map.foldrWithKey (\k a b -> b ++ map (helper2 k) (filter (\x->snd x==key) a)) [] d
         helper2 key (a,_)=(a,key)
 
+-- | Deletes a list of states from the automaton
+--   NOTE: After the application of this function we are left
+--         with an automaton that has, for example, states = [1, 3,4].
+--         Therefore later we will need a function to normalize this automaton.
+deleteStates :: NBA a ->
+                [State] -> -- ^ List with the states to be deleted
+                NBA a -- ^ New automaton
+deleteStates a st =
+  NBA {states=s, inicialStates=i, finalStates=f, delta=d''}
+  where s   = states a \\ st
+        i   = inicialStates a \\ st
+        f   = finalStates a \\ st
+        d   = delta a
+        d'  = Map.filterWithKey (\k _ -> k `notElem` st) d
+        d'' = Map.map (filter (\x->snd x `notElem` st)) d'
+
+-- | This function normalizes the keys in the automaton
+normalize :: NBA a -> NBA a
+normalize = undefined
+
+-- | Finds the never accepting states using the getter function
+--   (getNeverAcceptingStates) and removes them from the automaton
+deleteNeverAcceptingStates :: NBA a -> -- ^ Automaton
+                              NBA a    -- ^ Automaton without states
+deleteNeverAcceptingStates a = deleteStates a (getNeverAcceptingStates a)
+
 -- ---------------------------------------------------------------------
 -- End of transformation functions
 -- ---------------------------------------------------------------------
@@ -96,7 +122,10 @@ kosaraju a =
 isNeverAcceptingStateQ :: NBA a -> -- ^ Automaton
                           State -> -- ^ State querried
                           Bool
-isNeverAcceptingStateQ a s = undefined
+isNeverAcceptingStateQ a s =
+  not $ any (existsPathBetweenQ a s) sccf
+  where sccf = concat $ filter (any (`elem` f)) (kosaraju a) -- scc with final states
+        f    = finalStates a
 
 -- | Returns true if there is path from the first state
 --   to the second state in the given automaton.
@@ -150,6 +179,10 @@ getNeighbours a s =
   Map.lookup s d
   where d = delta a
 
+-- | Returns all the never accepting states in the automaton
+getNeverAcceptingStates :: NBA a -> [State]
+getNeverAcceptingStates a = filter (a `isNeverAcceptingStateQ`) (states a)
+
 -- | Given a state computes all the states that can be reached from that
 --   state.
 --   The function uses a Q to make the visits while tracking the visited states.
@@ -166,7 +199,7 @@ dfs :: NBA a -> -- ^ Automaton
 dfs a [] v _ = v
 dfs a (x:xs) v b
   | b = dfs a ([s | s<-neigs, s `notElem` (x:v)]++xs) newvisited True
-  | otherwise = dfs a ([s | s<-neigs, s `notElem` (x:v)]++xs) v True
+  | otherwise = dfs a ([s | s<-neigs, s `notElem` v]++xs) v True
   where neigs = map snd (fromMaybe [] (getNeighbours a x))
         newvisited = if x `elem` v then v else v++[x]
 -- ---------------------------------------------------------------------
@@ -231,12 +264,12 @@ g = NBA { states = [1, 2, 3],
         }
 
 g2 = NBA { states = [1, 2, 3, 4],
-           finalStates = [1],
+           finalStates = [1, 4],
            inicialStates = [1, 2],
            delta = Map.fromList [(1, [("a", 1), ("b", 2), ("a", 3)]),
                                  (2, [("b", 1), ("a", 3), ("a", 4)]),
                                  (3, [("b", 2), ("c", 4)]),
-                                 (4, [])]
+                                 (4, [("", 4)])]
         }
 
 g3 = NBA {
@@ -253,7 +286,7 @@ g3 = NBA {
 
 gTesteComponents = NBA {
                          states = [0..13],
-                         finalStates = [],
+                         finalStates = [1, 7],
                          inicialStates = [],
                          delta = Map.fromList [ (0, [("", 5), ("", 1)]),
                                                 (1, [("", 2), ("", 3), ("", 8)]),
