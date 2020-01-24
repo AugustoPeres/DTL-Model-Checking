@@ -55,10 +55,10 @@ instance Show a => FiniteGraphRepresentable (NBA a) where
 transpose :: NBA a -> NBA a
 transpose a =
   NBA {states = s, inicialStates = i, finalStates = f, delta = d'}
-  where s = states a
-        i = inicialStates a
-        f = finalStates a
-        d = delta a
+  where s  = states a
+        i  = inicialStates a
+        f  = finalStates a
+        d  = delta a
         d' = Map.fromList [(k, helper k) | k<-s]
         helper key = Map.foldrWithKey (\k a b -> b ++ map (helper2 k) (filter (\x->snd x==key) a)) [] d
         helper2 key (a,_)=(a,key)
