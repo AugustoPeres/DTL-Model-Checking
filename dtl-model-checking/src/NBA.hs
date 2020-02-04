@@ -5,7 +5,9 @@ module NBA
 
 import qualified Automaton       as GNBA
 import           CommonTypes
-import           Data.List       (nub, sort, union, (\\))
+import           Control.Monad   (replicateM)
+import           Data.List       (intersect, nub, permutations, sort, union,
+                                  (\\))
 import qualified Data.Map.Strict as Map
 import           Data.Maybe
 import qualified Data.Set        as Set
@@ -38,6 +40,10 @@ instance Show a => FiniteGraphRepresentable (NBA a) where
             unlines $ map
                       (\x->show k ++ "->" ++ show(snd x) ++ "[label=" ++ show(fst x) ++ "];")
                       (fromMaybe [] (Map.lookup k d))
+
+
+-- This data types are used for the complementation algorithm
+type LevelRanking = Map.Map State Int -- We represent _|_ as -1
 
 
 -- ---------------------------------------------------------------------
@@ -231,6 +237,18 @@ getNeighbours a s =
   Map.lookup s d
   where d = delta a
 
+-- | Given a list of states returns all the neigbours of all the states
+--   in that list
+getNeighboursGeneral :: Ord a =>
+                        NBA a -> -- ^ Automaton
+                        [State] -> -- ^ list of states
+                        a -> -- ^ list of states
+                        [State]
+getNeighboursGeneral a s l=
+  foldr (\x y -> union y (filter (fst==l)(fromMaybe [] (Map.lookup x d)))) [] s
+  where d = delta a
+
+
 -- | Returns all the never accepting states in the automaton
 getNeverAcceptingStates :: NBA a -> [State]
 getNeverAcceptingStates a = filter (a `isNeverAcceptingStateQ`) (states a)
@@ -257,6 +275,84 @@ dfs a (x:xs) v b
 -- ---------------------------------------------------------------------
 -- End of getters for the automaton
 -- ---------------------------------------------------------------------
+
+
+-- ---------------------------------------------------------------------
+-- Complementation of the automaton
+-- ---------------------------------------------------------------------
+
+-- | Makes all the level rankings given a certain automaton
+makeLevelRankings :: NBA a -> [LevelRanking]
+makeLevelRankings a =
+  [Map.fromList (zip q i) | q<-[s], i<-replicateM n [-1..2*n],
+                            all (\x -> (even (i!!x) || (i!!x) == -1) || (q!!x) `notElem` f) [0..(n-1)]]
+  where s = states a
+        n = length s
+        f = finalStates a
+
+-- | Checks if level ranking g1 covers level ranking g2 for a given automaton a
+--   DEFINITION: g' covers g if for all q and q': g(q) >= 0 and q' \in delta(q) implies
+--               0 <= g'(q') <= g(q)
+covers :: NBA a ->        -- ^ Automaton
+          LevelRanking -> -- ^ g1
+          LevelRanking -> -- ^ g2
+          Bool
+covers a g' g =
+  all condition s
+  where s = states a
+        d = delta a
+        condition q = let aux1 = fromJust $ Map.lookup q g
+                      in all (\x ->
+                             aux1 == -1 ||
+                             (x `notElem` map snd (fromJust $ Map.lookup q d)) ||
+                             (0 <= fromJust (Map.lookup x g') &&  fromJust (Map.lookup x g') <= aux1)
+                             )
+                          s
+
+-- | Returns the set even as defined in the book
+evenLR :: LevelRanking -> [State]
+evenLR = undefined
+
+-- | This function returns the complementary automaton
+complement :: NBA a -> -- ^ original automaton
+              [a] ->   -- ^ all the alphabet symbols
+              NBA a
+complement a sigma =
+  NBA { states = [1..n'],
+        inicialStates = [1],
+        finalStates = [1..length f],
+        delta = d'
+      }
+  where sm = Map.fromList $ zip [1..] s' ++ zip [1..] f ++[(1, (g0, []))]
+        s' = [(r, q) | r<-levelRankings, q<-subsequences s]
+        f = [(r, [])|r<-levelRankings]
+        s = states a
+        g0 = Map.fromList ([(s, 2*n) | s<-q0] ++ [(s, -1) | s<-s\\q0])
+        q0 = inicialStates a
+        n = length s
+        n' = length s'
+        levelRankings = makeLevelRankings a
+        d = delta  a
+        d' = Map.fromList
+            [(q, helper (fromJust $ Map.lookup q sm)) | q<-[1..n']]
+        helper :: (LevelRanking, [State]) -> [(a, State)]
+        helper q@(lr, set)
+          | null set  = [(pl, q') | let query = fromJust (Map.lookup q' sm),
+                                    pl<-sigma, q'<-[1..n'],
+                                    covers a (fst query) lr,
+                                    null (snd query \\ evenLR (fst query)) && null (evelLR (fst query) \\ snd query)
+                                   ]
+          | otherwise = [(pl, q') | let query = fromJust (Map.lookup q' sm),
+                                    pl<-sigma,
+                                    let neig  = getNeighboursGeneral a set pl,
+                                    covers a (fst query) lr,
+                                    null ((snd query `intersect` nei) \\ evenLR (fst query)) && null (evenLR (fst query) \\ (snd query `intersect` nei))
+                                    ]
+-- ---------------------------------------------------------------------
+-- End of complementation of the automaton
+-- ---------------------------------------------------------------------
+
+
 
 -- | Converts a generalized non deterministic Bucgi automaton
 --   into a non-deterministic Buchi automaton
