@@ -6,8 +6,8 @@ module NBA
 import qualified Automaton       as GNBA
 import           CommonTypes
 import           Control.Monad   (replicateM)
-import           Data.List       (intersect, nub, permutations, sort, union,
-                                  (\\))
+import           Data.List       (intersect, nub, permutations, sort,
+                                  subsequences, union, (\\))
 import qualified Data.Map.Strict as Map
 import           Data.Maybe
 import qualified Data.Set        as Set
@@ -237,15 +237,15 @@ getNeighbours a s =
   Map.lookup s d
   where d = delta a
 
--- | Given a list of states returns all the neigbours of all the states
---   in that list
-getNeighboursGeneral :: Ord a =>
+-- | INPUT : Automaton a, list of states s and an alphabet letter l
+--   RETURNS : Union of all delta(s', l) for all s' in s.
+getNeighboursGeneral :: Eq a =>
                         NBA a -> -- ^ Automaton
                         [State] -> -- ^ list of states
-                        a -> -- ^ list of states
+                        a -> -- ^ propositional letter
                         [State]
-getNeighboursGeneral a s l=
-  foldr (\x y -> union y (filter (fst==l)(fromMaybe [] (Map.lookup x d)))) [] s
+getNeighboursGeneral a s l= -- meter antes list comprehension
+  foldr (\x y -> union y [snd w | w <- fromMaybe [] (Map.lookup x d), fst w == l]) [] s
   where d = delta a
 
 
@@ -311,10 +311,11 @@ covers a g' g =
 
 -- | Returns the set even as defined in the book
 evenLR :: LevelRanking -> [State]
-evenLR = undefined
+evenLR lr = [k | k <- Map.keys lr, even (fromJust $ Map.lookup k lr)]
 
 -- | This function returns the complementary automaton
-complement :: NBA a -> -- ^ original automaton
+complement :: Eq a =>
+              NBA a -> -- ^ original automaton
               [a] ->   -- ^ all the alphabet symbols
               NBA a
 complement a sigma =
@@ -323,7 +324,7 @@ complement a sigma =
         finalStates = [1..length f],
         delta = d'
       }
-  where sm = Map.fromList $ zip [1..] s' ++ zip [1..] f ++[(1, (g0, []))]
+  where sm = Map.fromList $ zip [1..] s' ++ zip [1..] f ++ [(1, (g0, []))]
         s' = [(r, q) | r<-levelRankings, q<-subsequences s]
         f = [(r, [])|r<-levelRankings]
         s = states a
@@ -335,18 +336,19 @@ complement a sigma =
         d = delta  a
         d' = Map.fromList
             [(q, helper (fromJust $ Map.lookup q sm)) | q<-[1..n']]
-        helper :: (LevelRanking, [State]) -> [(a, State)]
+        --helper :: Eq a1 => (LevelRanking, [State]) -> [(a1, State)]
         helper q@(lr, set)
-          | null set  = [(pl, q') | let query = fromJust (Map.lookup q' sm),
-                                    pl<-sigma, q'<-[1..n'],
+          | null set  = [(pl, q') | pl<-sigma, q'<-[1..n'],
+                                    let query = fromJust (Map.lookup q' sm),
                                     covers a (fst query) lr,
-                                    null (snd query \\ evenLR (fst query)) && null (evelLR (fst query) \\ snd query)
+                                    null (snd query \\ evenLR (fst query)) && null (evenLR (fst query) \\ snd query)
                                    ]
-          | otherwise = [(pl, q') | let query = fromJust (Map.lookup q' sm),
+          | otherwise = [(pl, q') | q'<-[1..n'],
+                                    let query = fromJust (Map.lookup q' sm),
                                     pl<-sigma,
                                     let neig  = getNeighboursGeneral a set pl,
                                     covers a (fst query) lr,
-                                    null ((snd query `intersect` nei) \\ evenLR (fst query)) && null (evenLR (fst query) \\ (snd query `intersect` nei))
+                                    null ((snd query `intersect` neig) \\ evenLR (fst query)) && null (evenLR (fst query) \\ (snd query `intersect` neig))
                                     ]
 -- ---------------------------------------------------------------------
 -- End of complementation of the automaton
@@ -405,6 +407,13 @@ toNBA g =
 -- -----------------------------------------------------------------
 -- Test automatons and other variables
 -- -----------------------------------------------------------------
+gsmall = NBA { states = [1, 2],
+               finalStates = [2],
+               inicialStates = [1],
+               delta = Map.fromList [(1, [("a", 1), ("b", 1), ("b", 2)]),
+                                     (2, [("b", 2)])]
+              }
+
 g = NBA { states = [1, 2, 3],
           finalStates = [1],
           inicialStates = [1, 2],
@@ -422,8 +431,8 @@ g2 = NBA { states = [1, 2, 3, 4],
 
 g3 = NBA {
            states = [1, 2, 3, 4, 5],
-           finalStates = [],
-           inicialStates = [],
+           finalStates = [3, 4, 5],
+           inicialStates = [2, 1],
            delta = Map.fromList [ (1, [("", 2), ("", 4)]),
                                   (2, [("", 3)]),
                                   (3, [("", 1)]),
