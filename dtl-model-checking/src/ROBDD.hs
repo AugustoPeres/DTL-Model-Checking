@@ -6,7 +6,9 @@ module ROBDD
 
 import           CommonTypes
 import Data.Functor
-import Data.List (union)
+import Data.List (union, (\\))
+import qualified Data.Map.Lazy as M
+import Data.Maybe
 
 data OperationBDD = AND | OR deriving (Show, Eq)
 
@@ -33,26 +35,26 @@ data OperationBDD = AND | OR deriving (Show, Eq)
 -- NOTE: the code generating nodes must ensure unique labels, otherwise the
 --       the algorithms will not work.
 -- -----------------------------------------------------------------------------
-data ROBDD a lb = Leaf Bool
+data ROBDD a lb = Leaf Bool lb -- we label the leaf to make it easier on the pairing function
                 | Internal {value :: a, label :: lb, left :: (ROBDD a lb), right :: (ROBDD a lb)}
                 deriving (Show)
 
 instance Eq lb => Eq (ROBDD a lb) where
-  (Leaf b) == (Leaf b') = b == b'
+  (Leaf _ b) == (Leaf _ b') = b == b'
   (Internal _ lb _ _) == (Internal _ lb' _ _) = lb == lb'
-  (Internal _ _ _ _) == (Leaf _) = False
-  (Leaf _) == (Internal _ _ _ _) = False
+  (Internal _ _ _ _) == (Leaf _ _) = False
+  (Leaf _ _) == (Internal _ _ _ _) = False
 
 
 instance (Eq a, Ord a, Eq lb) => Ord (ROBDD a lb) where
   (Internal a _ _ _) `compare` (Internal a' _ _ _) = a `compare` a'
-  compare (Internal _ _ _ _) (Leaf _) = LT
-  compare (Leaf _) (Internal _ _ _ _) = GT
-  compare (Leaf _) (Leaf _)         = EQ
+  compare (Internal _ _ _ _) (Leaf _ _) = LT
+  compare (Leaf _ _) (Internal _ _ _ _) = GT
+  compare (Leaf _ _) (Leaf _ _)         = EQ
   (Internal a _ _ _) < (Internal a' _ _ _) = a < a'
-  (Internal _ _ _ _) < (Leaf _) = True -- leafs are always at the highest level.
-  (Leaf _) < (Internal _ _ _ _) = False
-  (Leaf _) < (Leaf _) = False -- leafs have the same order
+  (Internal _ _ _ _) < (Leaf _ _) = True -- leafs are always at the highest level.
+  (Leaf _ _) < (Internal _ _ _ _) = False
+  (Leaf _ _) < (Leaf _ _) = False -- leafs have the same order
 
 instance (Show a, Show lb, Eq lb) => FiniteGraphRepresentable (ROBDD a lb) where
   toGraphviz bdd =
@@ -61,18 +63,18 @@ instance (Show a, Show lb, Eq lb) => FiniteGraphRepresentable (ROBDD a lb) where
     foldr g "" nodes ++
     "}"
     where nodes = dfs bdd
-          g (Leaf _) str = str
+          g (Leaf _ _) str = str
           g (Internal v l _ _) str = str ++ show l ++ " [label = " ++ show v ++"]\n" 
-          f (Leaf _) str = str
-          f (Internal _ lbl (Leaf b) (Leaf b')) str =
+          f (Leaf _ _) str = str
+          f (Internal _ lbl (Leaf b _) (Leaf b' _)) str =
             str ++
             show lbl ++ "->" ++ show b ++ "[label = 0]\n" ++
             show lbl ++ "->" ++ show b' ++ "[label = 1]\n"
-          f (Internal _ lbl (Leaf b) r) str =
+          f (Internal _ lbl (Leaf b _) r) str =
             str ++
             show lbl ++ "->" ++ show b ++ "[label = 0]\n" ++
             show lbl ++ "->" ++ show (label r) ++ "[label = 1]\n"
-          f (Internal _ lbl l (Leaf b)) str =
+          f (Internal _ lbl l (Leaf b _)) str =
             str ++
             show lbl ++ "->" ++ show b ++ "[label = 1]\n" ++
             show lbl ++ "->" ++ show (label l) ++ "[label = 0]\n"
@@ -96,13 +98,80 @@ instance (Show a, Show lb, Eq lb) => FiniteGraphRepresentable (ROBDD a lb) where
 dfs :: (Eq lb) => ROBDD a lb -> [ROBDD a lb]
 dfs bdd = helper [bdd] (getChildren bdd)
   where helper visited [] = visited
-        helper visited (q:qs) = helper (visited ++ [q]) (qs `union` getChildren q)
+        helper visited (q:qs) = helper (visited ++ [q]) (qs `union` (getChildren q \\ visited))
 
 
-getChildren :: ROBDD a lb -> [ROBDD a lb]
-getChildren (Leaf _) = []
-getChildren (Internal _ _ l r) = [l, r]
+-- Input: Two Binary decision Diagrams
+-- Output: The binary decision diagram resulting from the application of apply
+-- NOTE: Note to be exported. This is just used to memoise in the larger function
+applyNoMemoise :: (Ord a, Eq lb) =>
+                  OperationBDD -> -- ^Operation to be applied
+                  ROBDD a lb -> -- ^First BDD
+                  ROBDD a lb -> -- ^Second Memoise
+                  ROBDD a (lb, lb) -- ^Third BDD. Using (lb, lb) to make combining labels easy
+applyNoMemoise o (Leaf b lb) (Leaf b' lb') = if o == AND then Leaf (b && b') (lb, lb') else Leaf (b || b') (lb, lb')
+applyNoMemoise o (Internal v lb l r) leaf@(Leaf b lb')
+  | o == OR = if b == True
+              then Leaf True (lb, lb')
+              else Internal v (lb, lb') (applyNoMemoise o l leaf) (applyNoMemoise o r leaf)
+  | o == AND = if b == True
+               then Internal v (lb, lb') (applyNoMemoise o l leaf) (applyNoMemoise o r leaf)
+               else Leaf False (lb, lb')
+applyNoMemoise o leaf@(Leaf b lb) (Internal v lb' l r)
+  | o == OR = if b == True
+              then Leaf True (lb, lb')
+              else Internal v (lb, lb') (applyNoMemoise o leaf l) (applyNoMemoise o leaf r)
+  | o == AND = if b == True
+               then Internal v (lb, lb') (applyNoMemoise o leaf l) (applyNoMemoise o leaf r)
+               else Leaf False (lb, lb')
+applyNoMemoise o n1@(Internal v lb l r) n2@(Internal v' lb' l' r')
+  | n1 < n2 = Internal v (lb, lb') (applyNoMemoise o l n2) (applyNoMemoise o r n2)
+  | n2 < n1 = Internal v' (lb, lb') (applyNoMemoise o l' n1) (applyNoMemoise o r' n1)
+  | otherwise = Internal v (lb, lb') (applyNoMemoise o l l') (applyNoMemoise o r r')
 
+-- Saves the calls to applyNoMemoise without storing repetitions.
+saveApplyCalls :: (Ord a, Eq lb, Ord lb) =>
+                  OperationBDD ->
+                  ROBDD a lb ->
+                  ROBDD a lb ->
+                  M.Map (lb, lb) (ROBDD a (lb, lb))
+saveApplyCalls o n1 n2 =
+  M.fromList m
+  where m = [((getLabel r, getLabel s), applyNoMemoise o r s) | r <- bdds1, s <- bdds2]
+        bdds1 = dfs n1
+        bdds2 = dfs n2
+
+
+apply :: (Ord a, Eq lb, Ord lb) =>
+         OperationBDD ->
+         ROBDD a lb ->
+         ROBDD a lb ->
+         ROBDD a (lb , lb) -- note, maybe it would be more useful to allow for diferent types of labels
+apply op bdd1 bdd2 =
+  faster op bdd1 bdd2
+  where -- open recursion --
+        h _ o (Leaf b lb) (Leaf b' lb') = if o == AND then Leaf (b && b') (lb, lb') else Leaf (b || b') (lb, lb')
+        h f o (Internal v lb l r) leaf@(Leaf b lb')
+          | o == OR = if b == True
+                         then Leaf True (lb, lb')
+                         else Internal v (lb, lb') (f o l leaf) (f o r leaf)
+          | o == AND = if b == True
+                          then Internal v (lb, lb') (f o l leaf) (f o r leaf)
+                          else Leaf False (lb, lb')
+        h f o leaf@(Leaf b lb) (Internal v lb' l r)
+          | o == OR = if b == True
+                         then Leaf True (lb, lb')
+                         else Internal v (lb, lb') (f o leaf l) (f o leaf r)
+          | o == AND = if b == True
+                          then Internal v (lb, lb') (f o l leaf) ( f  o r leaf)
+                          else Leaf False (lb, lb')
+        h f o n1@(Internal v lb l r) n2@(Internal v' lb' l' r')
+          | n1 < n2 = Internal v (lb, lb') ( f  o l n2) ( f  o r n2)
+          | n2 < n1 = Internal v' (lb, lb') ( f  o l' n1) ( f  o r' n1)
+          | otherwise = Internal v (lb, lb') ( f  o l l') ( f  o r r')
+        -- map --
+        mapMemo = M.fromList [((getLabel r, getLabel s), h faster op r s) | r <- dfs bdd1, s <- dfs bdd2]
+        faster o x y = fromJust $ M.lookup (getLabel x, getLabel y) mapMemo
 
 -- | Input: a Binary decision diagram
 --   Returns: The same BDD but with labels in order.
@@ -111,33 +180,55 @@ getChildren (Internal _ _ l r) = [l, r]
 -- END: Algorithms on ROBDD
 -- -----------------------------------------------------------------------------
 
+-- -----------------------------------------------------------------------------
+-- BEGIN: Getters for bdds2
+-- -----------------------------------------------------------------------------
+
+getChildren :: ROBDD a lb -> [ROBDD a lb]
+getChildren (Leaf _ _) = []
+getChildren (Internal _ _ l r) = [l, r]
+
+getLabel :: ROBDD a lb -> lb
+getLabel n@(Internal _ _ _ _) = label n
+getLabel (Leaf _ l) = l
+-- -----------------------------------------------------------------------------
+-- END: Getters for bdds2
+-- -----------------------------------------------------------------------------
+
+
 
 -- -----------------------------------------------------------------------------
 -- Test instances
 -- -----------------------------------------------------------------------------
-bdd1 = Internal {value = "x2", label = 1, left = Leaf True, right = Leaf False}
-bdd2 = Internal {value = "x1", label = 2, left = Leaf True, right = bdd1}
+bdd1 = Internal {value = "x2", label = 1, left = t, right =f }
+bdd2 = Internal {value = "x1", label = 2, left = t, right = bdd1}
 
 
 -- This nodes are to test the reduce algorithm
-n6 = Internal "x3" 1 (Leaf False) (Leaf False)
-n5 = Internal "x3" 2 (Leaf True) (Leaf False)
-n4 = Internal "x3" 3 (Leaf True) (Leaf True)
+t = Leaf True (-1)
+f = Leaf False (-2)
+n6 = Internal "x3" 1 (f) (f)
+n5 = Internal "x3" 2 (t) f
+n4 = Internal "x3" 3 (t) (t)
 n3 = Internal "x2" 4 n6 n6
 n2 = Internal "x2" 5 n5 n4
 n1 = Internal "x1" 6 n3 n2
 
 -- to show that one reduce might not be enough
-bddRed = Internal "x1" 1 (Internal "x2" 2 (Leaf True) (Leaf True)) (Leaf True)
+bddRed = Internal "x1" 1 (Internal "x2" 2 (t) (t)) (t)
 -- End of reduce tests
 
 -- examples from the book
-exempOne4 = Internal "x4" 1 (Leaf False) (Leaf True)
-exempOne3 = Internal "x3" 2 exempOne4 (Leaf (True))
-exempOne2 = Internal "x2" 3 exempOne4 exempOne3
-exempOne = Internal  "x1" 4 exempOne2 exempOne3
+r5 = Leaf False "R5"
+r6 = Leaf True "R6"
+s4 = Leaf False "S4"
+s5 = Leaf True "S5"
+r4 = Internal "x4" "R4" r5 r6
+r3 = Internal "x3" "R3" r4 r6
+r2 = Internal "x2" "R2" r4 r3
+r1 = Internal  "x1" "R1" r2 r3
 
-exempTwo3 = Internal "x4" 1 (Leaf False) (Leaf True)
-exempTwo2 = Internal "x3" 2 exempTwo3 (Leaf True)
-exempTwo = Internal  "x1" 3 exempOne4 exempOne3
+s3 = Internal "x4" "S3" s4 s5
+s2 = Internal "x3" "S2" s3 s5
+s1 = Internal  "x1" "S1" s3 s2
 -- end examples from the book
