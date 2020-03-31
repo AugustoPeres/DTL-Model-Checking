@@ -1,3 +1,4 @@
+{-# LANGUAGE InstanceSigs #-}
 module ROBDD
   (
     ROBDD
@@ -5,10 +6,10 @@ module ROBDD
   ) where
 
 import           CommonTypes
-import Data.Functor
-import Data.List (union, (\\))
+import           Data.List     (union, (\\))
 import qualified Data.Map.Lazy as M
-import Data.Maybe
+import           Data.Maybe
+import Data.List (sort)
 
 data OperationBDD = AND | OR deriving (Show, Eq)
 
@@ -39,6 +40,60 @@ data ROBDD a lb = Leaf Bool lb -- we label the leaf to make it easier on the pai
                 | Internal {value :: a, label :: lb, left :: (ROBDD a lb), right :: (ROBDD a lb)}
                 deriving (Show)
 
+
+-- TODO: Change this class to common types if there are any more types
+-- that would benefit from this class
+class Bifunctor f where
+  bimap :: (Eq c, Ord c) =>
+           (a -> b) ->
+           (c -> d) ->
+           f a c ->
+           f b d
+  firstmap :: (Eq c, Ord c) =>
+              (a -> b) ->
+              f a c ->
+              f b c
+  secondmap :: (Eq c, Ord c) =>
+              (c -> d) ->
+              f a c ->
+              f a d
+
+-- Now I want ot instance functor to be able to map over the bdd
+-- more easily. And making sure that i am using memoisation
+-- to keep track of all the changes.
+--
+-- Here we instance functor that works just over the values.
+-- We do not want any operations to be done over the leafs
+instance Bifunctor (ROBDD) where
+  firstmap f bdd = bimap f id bdd
+  secondmap f bdd = bimap id f bdd
+  bimap f h bdd =
+    fMemo f h bdd
+    where -- defining here the function that uses open recursion
+          open :: ((a -> a') -> (lb -> lb') -> ROBDD a lb -> ROBDD a' lb') -> -- this is the function that
+                                                                              -- we want to open
+                  (a -> a') -> -- This is the first function that we pass to opened
+                  (lb -> lb') -> -- This is the second function that we pass to opened
+                  ROBDD a lb -> -- the binary decision diagram we want to change
+                  ROBDD a' lb'
+          open _ _ g2 (Leaf b v) = Leaf b (g2 v)
+          open opened g1 g2 (Internal v lbl l r) = Internal (g1 v) (g2 lbl) (opened g1 g2 l) (opened g1 g2 r)
+          -- now we define the map to keep track of the recursive calls --
+          -- In the map we store the call to open fMemo g1 g1 bdd in function of the label
+          -- of the bdd we are using
+          -- On the other hand open calls fMemo when not at the leaf levels
+          -- this causes fMemo to consult the dictionary again for a smaller bdd
+          -- until we reach the leafs.
+          -- Because the entries in any dictionary are unique we make sure that
+          -- every call to open fMemo _ _ _ is only evaluated once.
+          -- For example if A has left node B and C has left node B then
+          -- opened f g1 g2 A is A _ _ (fMemo B) _ and
+          -- opened f g1 g2 C is C _ _ (fMemo B) _
+          -- Therefore we are allocating less memory and making less evaluations of the function
+          mapMemo = M.fromList [(getLabel b, open fMemo f h b) | b <- dfs bdd]
+          fMemo _ _ x = fromJust $ M.lookup (getLabel x) mapMemo
+
+
 instance Eq lb => Eq (ROBDD a lb) where
   (Leaf _ b) == (Leaf _ b') = b == b'
   (Internal _ lb _ _) == (Internal _ lb' _ _) = lb == lb'
@@ -64,7 +119,7 @@ instance (Show a, Show lb, Eq lb) => FiniteGraphRepresentable (ROBDD a lb) where
     "}"
     where nodes = dfs bdd
           g (Leaf _ _) str = str
-          g (Internal v l _ _) str = str ++ show l ++ " [label = " ++ show v ++"]\n" 
+          g (Internal v l _ _) str = str ++ show l ++ " [label = " ++ show v ++"]\n"
           f (Leaf _ _) str = str
           f (Internal _ lbl (Leaf b _) (Leaf b' _)) str =
             str ++
@@ -84,8 +139,8 @@ instance (Show a, Show lb, Eq lb) => FiniteGraphRepresentable (ROBDD a lb) where
             show lbl ++ "->" ++ show (label r) ++ "[label = 1]\n"
 
 
-            
-   
+
+
 -- -----------------------------------------------------------------------------
 -- BEGIN: Algorithms on ROBDD
 -- -----------------------------------------------------------------------------
@@ -129,19 +184,10 @@ applyNoMemoise o n1@(Internal v lb l r) n2@(Internal v' lb' l' r')
   | n2 < n1 = Internal v' (lb, lb') (applyNoMemoise o l' n1) (applyNoMemoise o r' n1)
   | otherwise = Internal v (lb, lb') (applyNoMemoise o l l') (applyNoMemoise o r r')
 
--- Saves the calls to applyNoMemoise without storing repetitions.
-saveApplyCalls :: (Ord a, Eq lb, Ord lb) =>
-                  OperationBDD ->
-                  ROBDD a lb ->
-                  ROBDD a lb ->
-                  M.Map (lb, lb) (ROBDD a (lb, lb))
-saveApplyCalls o n1 n2 =
-  M.fromList m
-  where m = [((getLabel r, getLabel s), applyNoMemoise o r s) | r <- bdds1, s <- bdds2]
-        bdds1 = dfs n1
-        bdds2 = dfs n2
 
-
+-- | Applies the operation to both bdds
+--   This function uses the fact that haskell uses lazy evaluation
+--   in order to memomize.
 apply :: (Ord a, Eq lb, Ord lb) =>
          OperationBDD ->
          ROBDD a lb ->
@@ -170,12 +216,47 @@ apply op bdd1 bdd2 =
           | n2 < n1 = Internal v' (lb, lb') ( f  o l' n1) ( f  o r' n1)
           | otherwise = Internal v (lb, lb') ( f  o l l') ( f  o r r')
         -- map --
+        -- The entries in the map correspond to all the possible different
+        -- call the the function.
         mapMemo = M.fromList [((getLabel r, getLabel s), h faster op r s) | r <- dfs bdd1, s <- dfs bdd2]
         faster o x y = fromJust $ M.lookup (getLabel x, getLabel y) mapMemo
 
 -- | Input: a Binary decision diagram
---   Returns: The same BDD but with labels in order.
+--   Returns: The same BDD but with labels as Ints and ordered.
+normalizeLabels :: (Eq lb, Ord lb, Ord a) => ROBDD a lb -> ROBDD a Int
+normalizeLabels bdd =
+  secondmap (\x -> fromJust $ M.lookup x m) bdd
+  where m = M.fromList $ zip (map getLabel (sort $ dfs bdd)) [1..]
 
+
+-- | Input: Two binary decision diagrams
+--   Output True iff they are isomorphic
+--   NOTE: Once again we use memoization and open
+--         recursion to avoid making evaluating the same bdd
+isomorphicQ :: (Eq a, Ord lb) =>
+               ROBDD a lb ->
+               ROBDD a lb ->
+               Bool
+isomorphicQ bdd1 bdd2 =
+  memoized bdd1 bdd2
+  where memoized x y = fromJust $ M.lookup (getLabel x, getLabel y) memoMap
+        memoMap = M.fromList [
+                             ((getLabel b, getLabel b'), opener memoized b b') |
+                             b <- dfs bdd1 ,
+                             b' <- dfs bdd2
+                             ]
+        opener f (Leaf b _) (Leaf b' _) = b==b'
+        opener f (Leaf _ _) (Internal _ _ _ _) = False
+        opener f (Internal _ _ _ _) (Leaf _ _) = False
+        opener f (Internal v _ l r) (Internal v' _ l' r') = v == v' && f l l' && f r r'
+
+
+-- | Input: A binary decision Diagram
+--   Output : A reduced ordered binary decision diagram
+reduce :: (Ord lb, Eq a) =>
+          ROBDD a lb ->
+          ROBDD a lb
+reduce = undefined
 -- -----------------------------------------------------------------------------
 -- END: Algorithms on ROBDD
 -- -----------------------------------------------------------------------------
@@ -183,14 +264,13 @@ apply op bdd1 bdd2 =
 -- -----------------------------------------------------------------------------
 -- BEGIN: Getters for bdds2
 -- -----------------------------------------------------------------------------
-
 getChildren :: ROBDD a lb -> [ROBDD a lb]
-getChildren (Leaf _ _) = []
+getChildren (Leaf _ _)         = []
 getChildren (Internal _ _ l r) = [l, r]
 
 getLabel :: ROBDD a lb -> lb
 getLabel n@(Internal _ _ _ _) = label n
-getLabel (Leaf _ l) = l
+getLabel (Leaf _ l)           = l
 -- -----------------------------------------------------------------------------
 -- END: Getters for bdds2
 -- -----------------------------------------------------------------------------
