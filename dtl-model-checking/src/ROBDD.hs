@@ -1,4 +1,3 @@
-{-# LANGUAGE InstanceSigs #-}
 module ROBDD
   (
     ROBDD
@@ -7,9 +6,9 @@ module ROBDD
 
 import           CommonTypes
 import           Data.List     (union, (\\))
+import           Data.List     (delete, dropWhile, nub, sort, sortBy)
 import qualified Data.Map.Lazy as M
 import           Data.Maybe
-import Data.List (sort)
 
 data OperationBDD = AND | OR deriving (Show, Eq)
 
@@ -118,20 +117,20 @@ instance (Show a, Show lb, Eq lb) => FiniteGraphRepresentable (ROBDD a lb) where
     foldr g "" nodes ++
     "}"
     where nodes = dfs bdd
-          g (Leaf _ _) str = str
+          g (Leaf b l) str = str ++ show l ++ " [label = " ++ show b ++ "]\n"
           g (Internal v l _ _) str = str ++ show l ++ " [label = " ++ show v ++"]\n"
           f (Leaf _ _) str = str
-          f (Internal _ lbl (Leaf b _) (Leaf b' _)) str =
+          f (Internal _ lbl (Leaf _ l) (Leaf _ l')) str =
             str ++
-            show lbl ++ "->" ++ show b ++ "[label = 0]\n" ++
-            show lbl ++ "->" ++ show b' ++ "[label = 1]\n"
-          f (Internal _ lbl (Leaf b _) r) str =
+            show lbl ++ "->" ++ show l ++ "[label = 0]\n" ++
+            show lbl ++ "->" ++ show l' ++ "[label = 1]\n"
+          f (Internal _ lbl (Leaf _ l) r) str =
             str ++
-            show lbl ++ "->" ++ show b ++ "[label = 0]\n" ++
+            show lbl ++ "->" ++ show l ++ "[label = 0]\n" ++
             show lbl ++ "->" ++ show (label r) ++ "[label = 1]\n"
-          f (Internal _ lbl l (Leaf b _)) str =
+          f (Internal _ lbl l (Leaf _ l')) str =
             str ++
-            show lbl ++ "->" ++ show b ++ "[label = 1]\n" ++
+            show lbl ++ "->" ++ show l' ++ "[label = 1]\n" ++
             show lbl ++ "->" ++ show (label l) ++ "[label = 0]\n"
           f (Internal _ lbl l r) str =
             str ++
@@ -144,6 +143,12 @@ instance (Show a, Show lb, Eq lb) => FiniteGraphRepresentable (ROBDD a lb) where
 -- -----------------------------------------------------------------------------
 -- BEGIN: Algorithms on ROBDD
 -- -----------------------------------------------------------------------------
+
+-- | Returns True iff the bdd is a lead
+isLeaf :: ROBDD a lb -> Bool
+isLeaf (Leaf _ _) = True
+isLeaf _          = False
+
 
 -- | Input: A BDD
 --   Output: A list with all the sub bdds in descending order
@@ -188,6 +193,7 @@ applyNoMemoise o n1@(Internal v lb l r) n2@(Internal v' lb' l' r')
 -- | Applies the operation to both bdds
 --   This function uses the fact that haskell uses lazy evaluation
 --   in order to memomize.
+--   NOTE: If this is not memoizing check the book high performance haskell for a solution
 apply :: (Ord a, Eq lb, Ord lb) =>
          OperationBDD ->
          ROBDD a lb ->
@@ -212,14 +218,14 @@ apply op bdd1 bdd2 =
                           then Internal v (lb, lb') (f o l leaf) ( f  o r leaf)
                           else Leaf False (lb, lb')
         h f o n1@(Internal v lb l r) n2@(Internal v' lb' l' r')
-          | n1 < n2 = Internal v (lb, lb') ( f  o l n2) ( f  o r n2)
-          | n2 < n1 = Internal v' (lb, lb') ( f  o l' n1) ( f  o r' n1)
-          | otherwise = Internal v (lb, lb') ( f  o l l') ( f  o r r')
+          | n1 < n2 = Internal v (lb, lb') (f  o l n2) (f  o r n2)
+          | n2 < n1 = Internal v' (lb, lb') (f  o n1 l') (f  o n1 r')
+          | otherwise = Internal v (lb, lb') (f  o l l') (f  o r r')
         -- map --
         -- The entries in the map correspond to all the possible different
         -- call the the function.
         mapMemo = M.fromList [((getLabel r, getLabel s), h faster op r s) | r <- dfs bdd1, s <- dfs bdd2]
-        faster o x y = fromJust $ M.lookup (getLabel x, getLabel y) mapMemo
+        faster _ x y = fromJust $ (M.lookup (getLabel x, getLabel y) mapMemo)
 
 -- | Input: a Binary decision diagram
 --   Returns: The same BDD but with labels as Ints and ordered.
@@ -251,15 +257,173 @@ isomorphicQ bdd1 bdd2 =
         opener f (Internal v _ l r) (Internal v' _ l' r') = v == v' && f l l' && f r r'
 
 
+-- | Input : A binary de cision diagram
+--   Output: [[][][]] where all bdd in the same list have
+--           the same order
+getSubBDDBByOrder :: (Ord a, Eq lb) =>
+                     ROBDD a lb ->
+                     [[ROBDD a lb]]
+getSubBDDBByOrder bdd =
+  reverse $ sortBy compare (foldr helper [] bdds)
+  where bdds = dfs bdd
+        --helper :: ROBDD a lb -> [[ROBDD a lb]] -> [[ROBDD a lb]]
+        helper bdd [] = [[bdd]]
+        helper bdd (x:xs)
+          | compare bdd (head x) == EQ = (bdd:x):xs
+          | otherwise = x:(helper bdd xs)
+
+
+-- | Checks if any two bdds in a list are isomorphic
+anyIsomorphicQ :: (Ord a, Ord lb) =>
+                  [ROBDD a lb] ->
+                  Bool
+anyIsomorphicQ bdds =
+  any (\x -> any (isomorphicQ x) (delete x bdds)) bdds
+
+
+-- | Checks if in a list there is any node with the
+--   right child equal to the left child
+--   NOTE: Will return an error when the input has leafs
+anyHasEqualChildrenQ :: (Eq a, Eq lb) =>
+                        [ROBDD a lb] ->
+                        Bool
+anyHasEqualChildrenQ list = any (\x -> left x == right x) list
+
+-- | Removes any duplicates by isomorphism
+filterIsomorphic :: (Ord a, Ord lb) =>
+                    [ROBDD a lb] ->
+                    [ROBDD a lb]
+filterIsomorphic bdd =
+  helper [] bdd
+  where helper bdds [] = bdds
+        helper bdds (x:xs)
+          | any (isomorphicQ x) bdds = helper bdds xs
+          | otherwise                = helper (x:bdds) xs
+
+
+-- | Input : A list of BDD
+--   Output : A map from label to that node isomorphic replacement
+--   Note: Not to be exported
+createMapToIsoReplacement :: (Ord a, Ord lb) =>
+                             [ROBDD a lb] ->
+                             M.Map lb (ROBDD a lb)
+createMapToIsoReplacement list =
+  M.fromList [(getLabel b, firstIsomorphic b) | b <- list]
+  where firstIsomorphic b = head $ dropWhile (not . isomorphicQ b) laux
+        laux = filterIsomorphic list
+
+-- | Input: A list of nodes
+--   Output: A mapping to the replacement of such nodes
+--           when the children are the same.
+--           When a node has two different left children then
+--           that node is its own replacement
+createMapToChildReplacement :: (Ord a, Ord lb) =>
+                               [ROBDD a lb] ->
+                               M.Map lb (ROBDD a lb)
+createMapToChildReplacement list =
+  M.fromList [(getLabel b, replacement b) | b <- list]
+  where replacement b
+          | left b == right b = left b
+          | otherwise = b
+
+
+-- | Input: A Map with changes to be applied and a list of
+--          lists with binary decision diagrams
+--   Output: A Map with changes to be applied that results
+--           from successively propagating the changes upward
+--   NOTE: this function is using unsafe look ups
+propagateChanges :: (Ord a, Ord lb) =>
+                    M.Map lb (ROBDD a lb) ->
+                    [[ROBDD a lb]] ->
+                    M.Map lb (ROBDD a lb)
+propagateChanges m [] = m
+propagateChanges m (x:xs) =
+  propagateChanges (foldr helper m x) xs
+  where helper :: (Ord a, Ord lb) => ROBDD a lb -> M.Map lb (ROBDD a lb) -> M.Map lb (ROBDD a lb)
+        helper (Leaf _ _) _ = undefined
+        helper (Internal v lbl l r) dic
+          | getLabel l `elem` k && getLabel r `elem` k =
+              M.insert lbl (Internal v lbl (dic M.! (getLabel l)) (dic M.! (getLabel r))) dic
+          | getLabel l `elem` k =
+              M.insert lbl (Internal v lbl (dic M.! (getLabel l)) r) dic
+          | getLabel r `elem` k =
+              M.insert lbl (Internal v lbl l (dic M.! (getLabel r))) dic
+          | otherwise = dic
+          where k = M.keys dic
+
+-- | Input: An ordered list f lists of bdd, i.e, [[bdd], [bdd]]
+-- | Return: The reduced binary decision diagram resulting from propagating
+--           all the changes upward
+--   NOTE: This is not safe for stupid inputs, for example
+--              * Two binary decision diagrams in the last list
+--              * A first list with leafs
+--              * Binary decision diagrams in the same list that are connected
+--   we do not work on the case were we replace isonodes and
+--   nodes with the same children at the same time.
+--   this makes propagating the changes much easier.
+--   NOTE: After propagating we still need to deal with the case where the  first
+--         node in the BDD is directed at two leafs. We can deal with this case
+--         just by testing with ==
+reduceFromList :: (Ord a, Ord lb) =>
+                  [[ROBDD a lb]] ->
+                  ROBDD a lb
+reduceFromList [x] =
+  if l == r
+     then r
+     else b
+  where l = left b
+        r = right b
+        b = head x
+reduceFromList l@(x:xs)
+  | null x =
+      reduceFromList xs
+  | isLeaf (head x) && length x > 2 =
+      reduceFromList (map (nub . mapMaybe (applyChange proisoChanges)) l)
+  | isLeaf (head x) && length x <= 2 =
+      reduceFromList xs
+  | not (anyHasEqualChildrenQ x) && not (anyIsomorphicQ x) =
+      reduceFromList xs
+  | anyIsomorphicQ x =
+      reduceFromList (map (nub . mapMaybe (applyChange proisoChanges)) l) --without nub an infinite loop may happen
+  | anyHasEqualChildrenQ x =
+      reduceFromList (map (nub . mapMaybe (applyChange prochildChanges)) l)
+  | otherwise = reduceFromList (map (nub . mapMaybe (applyChange prochildChanges)) l)
+  where applyChange m x' = if getLabel x' `elem` M.keys m
+                           then if isLeaf (m M.! (getLabel x')) then Nothing else Just $ m M.! (getLabel x')
+                           else Just x'
+        childChanges = createMapToChildReplacement x
+        prochildChanges = propagateChanges childChanges xs
+        isoChanges = createMapToIsoReplacement x
+        proisoChanges = propagateChanges isoChanges xs
+        leafsChange = createMapToIsoReplacement x --we use the map for iso replacement
+        -- because if there is more than one leaf then it must be the case that more
+        -- than one are isomorphic
+        proleafsChange = propagateChanges leafsChange xs
+
+
 -- | Input: A binary decision Diagram
 --   Output : A reduced ordered binary decision diagram
-reduce :: (Ord lb, Eq a) =>
+reduce :: (Ord lb, Ord a) =>
           ROBDD a lb ->
           ROBDD a lb
-reduce = undefined
+reduce leaf@(Leaf _ _) = leaf
+reduce bdd             = reduceFromList $ getSubBDDBByOrder bdd
+
+
 -- -----------------------------------------------------------------------------
 -- END: Algorithms on ROBDD
 -- -----------------------------------------------------------------------------
+
+
+
+-- -----------------------------------------------------------------------------
+-- BEGIN: Interactions with the boolean function package
+-- -----------------------------------------------------------------------------
+
+-- -----------------------------------------------------------------------------
+-- END: Interact with the bolean function package
+-- -----------------------------------------------------------------------------
+
 
 -- -----------------------------------------------------------------------------
 -- BEGIN: Getters for bdds2
@@ -295,7 +459,9 @@ n2 = Internal "x2" 5 n5 n4
 n1 = Internal "x1" 6 n3 n2
 
 -- to show that one reduce might not be enough
-bddRed = Internal "x1" 1 (Internal "x2" 2 (t) (t)) (t)
+bddRed2 = Internal "x2" 3 t t
+bddRed3 = Internal "x2" 2 t t
+bddRed1 = Internal "x1" 1 bddRed2 bddRed3
 -- End of reduce tests
 
 -- examples from the book
