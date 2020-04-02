@@ -4,10 +4,11 @@ module ROBDD
   ,
   ) where
 
+import           BooleanFormulas
 import           CommonTypes
-import           Data.List     (union, (\\))
-import           Data.List     (delete, dropWhile, nub, sort, sortBy)
-import qualified Data.Map.Lazy as M
+import           Data.List       (union, (\\))
+import           Data.List       (delete, dropWhile, nub, sort, sortBy)
+import qualified Data.Map.Lazy   as M
 import           Data.Maybe
 
 data OperationBDD = AND | OR deriving (Show, Eq)
@@ -215,7 +216,7 @@ apply op bdd1 bdd2 =
                          then Leaf True (lb, lb')
                          else Internal v (lb, lb') (f o leaf l) (f o leaf r)
           | o == AND = if b == True
-                          then Internal v (lb, lb') (f o l leaf) ( f  o r leaf)
+                          then Internal v (lb, lb') (f o leaf l) ( f  o leaf r)
                           else Leaf False (lb, lb')
         h f o n1@(Internal v lb l r) n2@(Internal v' lb' l' r')
           | n1 < n2 = Internal v (lb, lb') (f  o l n2) (f  o r n2)
@@ -227,8 +228,41 @@ apply op bdd1 bdd2 =
         mapMemo = M.fromList [((getLabel r, getLabel s), h faster op r s) | r <- dfs bdd1, s <- dfs bdd2]
         faster _ x y = fromJust $ (M.lookup (getLabel x, getLabel y) mapMemo)
 
+
+-- Input: A BDD and a variable and a truth value
+-- Returns: A BDD resulting from the application of
+--          restrict to that binary decision diagram
+-- NOTE: Despite the fact that the resulting binary decision diagram
+--       without memoization is the same we use any way to make fewer calls
+--       to the function and to avoid allocating extra memory
+-- NOTE: The resulting binary decision diagrams is not necessarily
+--       a reduced ordered binary decision diagram.
+restrict :: (Ord a, Ord lb) =>
+            ROBDD a lb ->
+            a ->
+            Bool ->
+            ROBDD a lb
+restrict bdd var bool =
+  faster bdd
+  where faster = (memoMap M.!) . getLabel
+        memoMap = M.fromList [(getLabel b, opener bool faster b) | b <- dfs bdd]
+        opener _ _ l@(Leaf _ _) = l
+        opener dir f (Internal v lb l r)
+          | dir = -- this is the case where we go right
+              if v == var
+              then f r -- if we do not call f again we are allocating too much memory
+                            -- and obtaining wrong binary decision diagrams
+              else Internal v lb (f l) (f r)
+          | otherwise = -- this is the case where we go left
+              if v == var
+              then f l
+              else Internal v lb (f l) (f r)
+
 -- | Input: a Binary decision diagram
 --   Returns: The same BDD but with labels as Ints and ordered.
+--   NOTE: If there are any nodes with equal labels this will return a binary
+--         decision diagram that is of course not represented correctly
+--         since there will still be equal labels
 normalizeLabels :: (Eq lb, Ord lb, Ord a) => ROBDD a lb -> ROBDD a Int
 normalizeLabels bdd =
   secondmap (\x -> fromJust $ M.lookup x m) bdd
@@ -420,6 +454,29 @@ reduce bdd             = reduceFromList $ getSubBDDBByOrder bdd
 -- BEGIN: Interactions with the boolean function package
 -- -----------------------------------------------------------------------------
 
+-- | Input: A clause that must be of the form (x1 And x2 And ~x3 And ... And xn)
+--   Output: A binary decision diagram for said clause
+--           This binary decision diagram is already reduce.
+constructFromAndClause :: (Ord a) =>
+                          BooleanFormula a ->
+                          ROBDD a Int
+constructFromAndClause c =
+  foldr helper t list
+  where t = Leaf True 1
+        f = Leaf False 2
+        list = zip [3..] (sort $ getVariables c)
+        helper var bdd
+          | varAppearsNegated (snd var) c = Internal (snd var) (fst var) (bdd) f
+          | otherwise = Internal (snd var) (fst var) f (bdd)
+
+-- | Input: A list of simple clauses, i.e, a formula in disjuntive normal form
+--   Output: The binary decision diagram for said formula
+makeFromCNF :: (Ord a) =>
+               [BooleanFormula a] ->
+               ROBDD a Int
+makeFromCNF l =
+  foldr (\a b ->  reduce . normalizeLabels $ apply OR a b) (Leaf False 1) smallBdds
+  where smallBdds = map constructFromAndClause l
 -- -----------------------------------------------------------------------------
 -- END: Interact with the bolean function package
 -- -----------------------------------------------------------------------------
@@ -467,14 +524,20 @@ bddRed1 = Internal "x1" 1 bddRed2 bddRed3
 -- examples from the book
 r5 = Leaf False "R5"
 r6 = Leaf True "R6"
-s4 = Leaf False "S4"
-s5 = Leaf True "S5"
 r4 = Internal "x4" "R4" r5 r6
 r3 = Internal "x3" "R3" r4 r6
 r2 = Internal "x2" "R2" r4 r3
 r1 = Internal  "x1" "R1" r2 r3
 
+s4 = Leaf False "S4"
+s5 = Leaf True "S5"
 s3 = Internal "x4" "S3" s4 s5
 s2 = Internal "x3" "S2" s3 s5
 s1 = Internal  "x1" "S1" s3 s2
 -- end examples from the book
+
+-- Test instances for constructing bdd from clauses
+c1 = [(False, "x1"), (True, "x2")]
+c2 = [(True, "x4"), (True, "x3")]
+c3 = [(True, "x1"), (False, "x5"), (True, "x6")]
+c4 = [(True, "x2"), (False, "x3"), (True, "x7")]
