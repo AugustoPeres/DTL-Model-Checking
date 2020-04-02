@@ -1,0 +1,23 @@
+#+TITLE: DTL model checking algorithms
+#+AUTOH: Augusto Peres
+
+* Introduction
+
+* Features
+
+* Details on the implementation
+
+* Next steps
+
+** KNOWCAUSE Cannot create Maps with ROBDDs 
+   This is because the instance for order (in the case of the leafs) is not
+   properly done and could use improvement. Not a major concern as I can simply
+   use the labels which usually also derive order 
+
+** TODO: The algorithm Exists for binary decision diagrams 
+   DEADLINE: <2020-04-03 Fri>
+   
+** TODO: Start working on the implementation of distributed transition systems
+
+* Things I am not totally happy about 
+
