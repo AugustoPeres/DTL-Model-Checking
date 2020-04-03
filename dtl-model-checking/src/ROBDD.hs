@@ -258,6 +258,31 @@ restrict bdd var bool =
               then f l
               else Internal v lb (f l) (f r)
 
+-- | Input: A BDD a variable
+--   Output: The resulting BDD resulting from the application
+--           of the algorithm exists to said binary decision diagram
+--   NOTE: There is no guarantee that this decision diagram will be in the
+--         reduced form.
+exists :: (Ord a, Ord lb) =>
+          ROBDD a lb ->
+          a ->
+          ROBDD a (lb, lb)
+exists bdd a = apply OR
+               (reduce $ restrict bdd a True)
+               (reduce $ restrict bdd a False)
+
+
+-- | Input: A bdd a list of variables
+--   Return: The result of Exists to the variables successively
+smooth :: (Ord a, Ord lb) =>
+          ROBDD a lb ->
+          [a] ->
+          ROBDD a Int
+smooth bdd l = foldr
+               (\a b -> (normalizeLabels . reduce) $ exists b a)
+               (normalizeLabels bdd) l
+
+
 -- | Input: a Binary decision diagram
 --   Returns: The same BDD but with labels as Ints and ordered.
 --   NOTE: If there are any nodes with equal labels this will return a binary
@@ -411,7 +436,7 @@ reduceFromList [x] =
 reduceFromList l@(x:xs)
   | null x =
       reduceFromList xs
-  | isLeaf (head x) && length x > 2 =
+  | (isLeaf (head x) && length x > 2) || (anyIsomorphicQ x) =
       reduceFromList (map (nub . mapMaybe (applyChange proisoChanges)) l)
   | isLeaf (head x) && length x <= 2 =
       reduceFromList xs
