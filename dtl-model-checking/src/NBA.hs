@@ -217,7 +217,7 @@ kosaraju a =
   where ord =  makeOrder $ dfs a [1] [] True
         makeOrder ord
           | s == sort ord = ord
-          | otherwise = makeOrder (ord ++ (dfs a [head (s \\ ord)] ord True \\ ord))
+          | otherwise = makeOrder ((dfs a [head (s \\ ord)] ord True \\ ord) ++ ord)
         s = sort $ states a
         aT  = transpose a
         helper :: [State] -> [State] -> [[State]] -> [[State]]
@@ -485,3 +485,14 @@ gTesteComponents = NBA {
                                                 (13, [("", 12), ("a", 12)])
                                               ]
                        }
+
+
+gBugTransitionSystem = NBA {
+                             states = [1..4],
+                             finalStates = [],
+                             inicialStates = [],
+                             delta = Map.fromList [ (1, []),
+                                                    (2, []),
+                                                    (3, [("", 4)]),
+                                                    (4, [("", 1)])]
+                           }

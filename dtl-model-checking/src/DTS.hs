@@ -148,7 +148,7 @@ kosaraju dts =
   where ord = makeOrder $ dfs dts [S.elemAt 0 sts] [] True
         makeOrder ord
           | sts == S.fromList ord = ord
-          | otherwise = makeOrder (ord ++ (dfs dts [head $ lsts \\ ord] ord True\\ ord))
+          | otherwise = makeOrder ((dfs dts [head $ lsts \\ ord] ord True\\ ord) ++ ord)
         lsts = S.toList sts
         sts = states dts
         aT = transpose dts
@@ -220,3 +220,23 @@ t = DTS {states = S.fromList [1, 2, 3, 4],
                                       ((4, 2), S.fromList [])
                                       ],
         transitionRelation = M.fromList []}
+
+
+tKosBug = DTS {states = S.fromList [1, 2, 3, 4],
+        actions = M.fromList [(1, S.fromList ["a", "b"]), (2, S.fromList ["a", "c"])],
+        initialStates = S.fromList [1, 4],
+        propSymbols = M.fromList [
+            (1, S.fromList ["p1", "q1"]),
+            (2, S.fromList ["p2", "q2'"])
+                    ],
+        labelingFunction = M.fromList [
+                                      ((1, 1), S.fromList ["p"]),
+                                      ((1, 2), S.fromList ["q"]),
+                                      ((2, 1), S.fromList ["p"]),
+                                      ((2, 2), S.fromList []),
+                                      ((3, 1), S.fromList []),
+                                      ((3, 2), S.fromList ["q"]),
+                                      ((4, 1), S.fromList []),
+                                      ((4, 2), S.fromList [])
+                                      ],
+        transitionRelation = M.fromList [((3, "a"), 4), ((4, "a"), 1)]}
