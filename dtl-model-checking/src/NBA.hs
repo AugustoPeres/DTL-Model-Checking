@@ -1,7 +1,9 @@
 module NBA
   (
-  NBA
+  NBA(..), State, getNeighbours, getNeighboursGeneral,
   ) where
+
+
 
 import qualified Automaton       as GNBA
 import           CommonTypes
@@ -19,6 +21,8 @@ import qualified Data.Set        as Set
 -- symbols. Where previously we were limited to
 --         type AlphabetSymbol = (Set.Set Formula, Action)
 -- Maybe should derive some instaces of a.
+
+type State = Int
 data NBA a = NBA { states        :: [State],
                    inicialStates :: [State],
                    finalStates   :: [State],

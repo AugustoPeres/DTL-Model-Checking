@@ -1,4 +1,7 @@
-module DTS (DTS, )
+module DTS (DTS (..), getAllActions, getLabel, getAgents,
+            getPropSymbolsAgent, createFromStates, addStateLabel,
+            addToInitialStates, addTransitionSafe, addActionAgent,
+            getActionsAgent, isTransitionOfSystem, kosaraju)
 where
 
 import Data.List ((\\))
@@ -29,7 +32,7 @@ data DTS s i prop a = DTS {
                           states             :: S.Set s,
                           actions            :: M.Map i (S.Set a),
                           initialStates      :: S.Set s,
-                          propSymbols        :: M.Map i (S.Set prop),
+                          propSymbols         :: M.Map i (S.Set prop),
                           labelingFunction   :: M.Map (s, i) (S.Set prop),
                           transitionRelation :: M.Map (s, a) s
                           } deriving (Show)
@@ -45,6 +48,70 @@ instance (Show s, Show prop, Show a, Ord s) => FiniteGraphRepresentable (DTS s i
     where sts = states system
           l = labelingFunction system
           -- getter s = fromJust $ (M.lookup s l)
+
+
+-- | Input: A list of states
+--   Output: An empty transition system with only those states
+createFromStates :: (Ord s, Ord i, Ord prop, Ord a) =>
+                    [s] ->
+                    DTS s i prop a
+createFromStates list =
+  DTS { states             = S.fromList list,
+        actions            = M.empty,
+        initialStates      = S.empty,
+        propSymbols        = M.empty,
+        labelingFunction   = M.empty,
+        transitionRelation = M.empty}
+
+
+-- | Input: A list of states and a dts
+--   Output: A new dts with the states added to the initial states
+addToInitialStates :: (Ord s, Ord i, Ord prop, Ord a) =>
+                      DTS s i prop a ->
+                      s ->
+                      DTS s i prop a
+addToInitialStates dts state =
+  DTS { states             = states dts,
+        actions            = actions dts,
+        initialStates      = initialStates dts `S.union` S.fromList [state],
+        propSymbols        = propSymbols dts,
+        labelingFunction   = labelingFunction dts,
+        transitionRelation = transitionRelation dts}
+
+
+-- | Input: A dts, a state, ann agent, and a label
+--   Output: A new dts with that local label added
+--   NOTE: this is not safe. Moreover a label for an existing state
+--         might be replaced
+addStateLabel :: (Ord s, Ord i, Ord prop) =>
+                 DTS s i prop a ->
+                 s ->
+                 i ->
+                 [prop] ->
+                 DTS s i prop a
+addStateLabel dts state agent list =
+  DTS { states             = states dts,
+        actions            = actions dts,
+        initialStates      = initialStates dts,
+        propSymbols        = propSymbols dts,
+        labelingFunction   = M.insert (state, agent) (S.fromList list) (labelingFunction dts),
+        transitionRelation = transitionRelation dts}
+
+-- | Input: a dts, an action, an agent
+--   Output: a dts with that action added for that agent
+addActionAgent :: (Ord i, Ord a) =>
+                  DTS s i prop a ->
+                  a ->
+                  i ->
+                  DTS s i prop a
+addActionAgent dts action agent =
+  DTS { states             = states dts,
+        actions            = M.insert agent (newActions) (actions dts),
+        initialStates      = initialStates dts,
+        propSymbols        = propSymbols dts,
+        labelingFunction   = labelingFunction dts,
+        transitionRelation = transitionRelation dts}
+  where newActions = S.union (fromMaybe S.empty (actions dts M.!? agent)) (S.fromList [action])
 
 
 -- | Input: Receives a distributed transiotion system a state, a list with local valuations
@@ -135,6 +202,20 @@ isTransitionAllowed dts departure arrival action =
         l = labelingFunction dts
 
 
+-- | Input: A dts, two states and an action
+--   Output: True if it is an action of the agent
+isTransitionOfSystem :: (Ord s, Ord a) =>
+                        DTS s i prop a ->
+                        s ->
+                        s ->
+                        a ->
+                        Bool
+isTransitionOfSystem dts s1 s2 act =
+  if goal == Nothing
+  then False
+  else (fromJust goal) == s2
+  where goal = (transitionRelation dts)M.!?(s1, act)
+
 -- | Input: A DTS
 --   Output: A list with all the strongly connected components of the system
 --   Method : Kosaraju
@@ -201,6 +282,55 @@ getNeighbours dts state =
   M.foldrWithKey f [] tr
   where tr = transitionRelation dts
         f k a b = (if fst k == state then b ++ [a] else b)
+
+
+-- | Input: A DTS
+--   Output: All the actions in a list regardless of agent
+getAllActions :: (Ord s, Ord a) =>
+                 DTS s i prop a ->
+                 [a]
+getAllActions dts =
+  S.toList $
+  M.foldr (S.union) S.empty (actions dts)
+
+-- | Input: A DTS, and an agent
+--   Output: All the actions for that agent as a list
+getActionsAgent :: (Ord a, Ord i) =>
+                   DTS s i prop a ->
+                   i ->
+                   [a]
+getActionsAgent dts agent =
+  S.toList $ fromMaybe S.empty ((actions dts)M.!?agent)
+
+-- | Input: A DTS and a state
+--   Output: The label for the state as a concatenated list
+getLabel :: (Ord s, Ord prop) =>
+            DTS s i prop a ->
+            s ->
+            [prop]
+getLabel dts state =
+  S.toList $
+  M.foldrWithKey (\k x y -> if fst k == state then S.union x y else y)
+                 S.empty
+                 (labelingFunction dts)
+
+
+-- | Input: A dts and an agent
+--   Output: A list with all the propositional symbols from that agent
+getPropSymbolsAgent :: (Ord i) =>
+                       DTS s i prop a ->
+                       i ->
+                       [prop]
+getPropSymbolsAgent dts agent =
+  S.toList $ fromMaybe S.empty ((propSymbols dts) M.!? agent)
+-- | Input: A DTS
+--   Output: The agents of the system.
+--   NOTE: WE assume that the mappings in the system are complete, i.e,
+--         the keys in the maps envolving agents encompasse all keys.
+getAgents :: (Ord i) =>
+             DTS s i prop a ->
+             [i]
+getAgents dts = M.keys (propSymbols dts)
 -- Just some test instances --
 t = DTS {states = S.fromList [1, 2, 3, 4],
         actions = M.fromList [(1, S.fromList ["a", "b"]), (2, S.fromList ["a", "c"])],

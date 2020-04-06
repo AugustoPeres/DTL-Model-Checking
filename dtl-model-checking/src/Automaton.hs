@@ -35,7 +35,8 @@ import           DTLFormula
 -- since the destiction between the two is not necessary
 
 -- Restriction : No automatoun can have more than maxBound::Int states
-
+type State = Int
+type Action = String
 type AlphabetSymbol = (Set.Set Formula, Action) -- here the formulas are propositional symbols or the negations
 
 data GNBA = GNBA {states        :: [State],
