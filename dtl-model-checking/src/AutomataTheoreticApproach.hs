@@ -2,13 +2,14 @@ module AutomataTheoreticApproach (modelCheck)
   where
 
 
-import CommonTypes
-import qualified DTS as T -- T from transition system
-import qualified NBA as N
-import qualified DTLFormula as F
-import qualified Data.Set as S
+import           CommonTypes
+import           Data.List     (union)
 import qualified Data.Map.Lazy as M
-import Data.List (union)
+import qualified Data.Set      as S
+import qualified DTLFormula    as F
+import qualified DTS           as T
+import qualified GNBA          as G
+import qualified NBA           as N
 
 -- import missing that has the GNBA module
 
@@ -28,14 +29,32 @@ import Data.List (union)
 -- END: Description of the module
 -- -----------------------------------------------------------------------------
 
--- | Input: A transition system, a DTL formula
+-- | Input: A transition system, a DTL formula and an integer.
 --   Output: Yes iff the transition system satisfies the formula
 --   This is the MAIN function on the module.
 modelCheck :: (Ord s, Ord i, Ord prop, Ord a) =>
               T.DTS s i prop a ->
               F.Formula ->
+              Int -> -- number of agents
               Bool
-modelCheck t alpha = undefined
+modelCheck t alpha n = undefined
+
+
+-- -----------------------------------------------------------------------------
+-- BEGIN: Making the automaton for the complementary language
+-- -----------------------------------------------------------------------------
+
+makeComplementaryGNBA :: F.Formula ->
+                         Int ->          -- number of agents
+                         [[a]] ->        -- list with the actions
+                         [S.Set prop] -> -- propositional symbols for each agent
+                         G.GNBA (S.Set F.Formula) (S.Set prop, a)
+makeComplementaryGNBA = undefined
+-- -----------------------------------------------------------------------------
+-- END: Making the automaton for the complementary language
+-- -----------------------------------------------------------------------------
+
+
 
 
 -- | Input: A DTS and an automaton

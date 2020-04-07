@@ -32,7 +32,7 @@ data DTS s i prop a = DTS {
                           states             :: S.Set s,
                           actions            :: M.Map i (S.Set a),
                           initialStates      :: S.Set s,
-                          propSymbols         :: M.Map i (S.Set prop),
+                          propSymbols        :: M.Map i (S.Set prop),
                           labelingFunction   :: M.Map (s, i) (S.Set prop),
                           transitionRelation :: M.Map (s, a) s
                           } deriving (Show)
