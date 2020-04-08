@@ -1,4 +1,4 @@
-module GNBA (GNBA(..), empty, addState, addTransition, addFinalSet)
+module GNBA (GNBA(..), empty, addState, addTransition, addFinalSet, addToInitialStates)
 where
 
 
@@ -27,6 +27,19 @@ data GNBA s a = GNBA { states        :: [s],
 -- Create an empty automaton
 empty :: GNBA s a
 empty = GNBA [] [] [] Map.empty
+
+
+-- | Input: A GNBA and a state
+--   Output: A GNBA with that state added to the initial states
+addToInitialStates :: (Eq s) => GNBA s a -> s -> GNBA s a
+addToInitialStates gnba state=
+  GNBA (states gnba `union` [state])
+       (inicialStates gnba `union` [state])
+       (finalSets gnba)
+       (delta gnba)
+
+
+
 
 
 -- | Input: A GNBA and a state,

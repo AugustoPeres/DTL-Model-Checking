@@ -1,6 +1,6 @@
 module Ielementary (SOF, isMaximal, isIConsistent, isLocallyConsistent,
                     isConsistent, downArrow, isIElementary, iElementarySetsAgent,
-                    haveSameGlobalFormulas)
+                    haveSameGlobalFormulas, hasCommunicationFormulas)
 where
 
 import qualified Data.Set   as S
@@ -64,6 +64,12 @@ downArrow set i alpha =
 -- -----------------------------------------------------------------------------
 -- BEGIN: Queries on the sets
 -- -----------------------------------------------------------------------------
+
+
+-- | Input: A Set
+--   Output: True iff that set has a communication formula
+hasCommunicationFormulas :: SOF -> Bool
+hasCommunicationFormulas set = any (isCommunication) set
 
 -- | Input: Two sets
 --   Ouptut: True iff the sets have the same global formulas

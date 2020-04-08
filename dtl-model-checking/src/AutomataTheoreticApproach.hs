@@ -73,11 +73,23 @@ makeComplementaryGNBA :: F.GlobalFormula ->
                          [I.SOF] -> -- propositional symbols for each agent
                          G.GNBA GNBAState AlphabetSymbol
 makeComplementaryGNBA alpha n acts props=
-  -- first we add the states--
-  foldr (\a b -> G.addState b a) G.empty statesGNBA
+  -- second the intial states--
+  foldr (\a b -> G.addToInitialStates b a)
+        -- first we add the states --
+        (foldr (\a b -> G.addState b a) G.empty statesGNBA)
+        -- first we add the states --
+        initialStates
+  -- second the initial states --
   where statesGNBA = makeStatesGNBA alpha n clo props
         clo = F.closureFormula alpha n
+        initialStates = filter canBeInitialState statesGNBA
 
+
+-- | Input: A state of the GNBA
+--   Output: True iff that state can be an initial state
+canBeInitialState :: GNBAState -> Bool
+canBeInitialState state =
+  all (\x -> (not (I.hasCommunicationFormulas (fst x))) && (snd x /= Upsilon) ) state
 
 -- | Input: A formula, The number of agents, the closure of the
 --          formula, the propositional letter
