@@ -1,9 +1,10 @@
-module Ielementary (SOF, isMaximal, isIConsistent)
+module Ielementary (SOF, isMaximal, isIConsistent, isLocallyConsistent,
+                    isConsistent, downArrow, isIElementary, iElementarySetsAgent)
 where
 
-import DTLFormula
-import qualified Data.Set as S
-
+import qualified Data.Set   as S
+import           DTLFormula
+import Data.List (nub)
 -- DESCRIPTION: This module is responsible for operations over sets of formulas
 --              as described in thesis.
 --              The operations present here are manly boolean functions that
@@ -21,9 +22,86 @@ import qualified Data.Set as S
 -- SOF stands for Set Of Formulas
 type SOF = S.Set Formula
 
+
+-- -----------------------------------------------------------------------------
+-- BEGIN: Construction and manipulation of sets
+-- -----------------------------------------------------------------------------
+
+-- | Input: A SOF, an agent, A SOF, a formula
+--   Output: all the i-elementary sets for the agent
+iElementarySetsAgent :: SOF -> -- ^ the closure of a formula
+                        Agent -> -- ^ the agent for which we make the computation
+                        SOF -> -- ^ the propositional symbols for the agent
+                        GlobalFormula ->
+                        [SOF]
+iElementarySetsAgent clo i lit alpha =
+  -- this is probably not the most efficient way to do this
+  nub [downArrow set i alpha | set <- S.toList $ S.powerSet (S.union clo lit),
+                               isIElementary set clo i ]
+
+
+-- | Input: A set of formulas, an angent, the global formula
+--   Output: A set of formulas with the formulas that are in
+--           the domain of the agent
+downArrow :: SOF ->
+             Agent ->
+             GlobalFormula ->
+             SOF
+downArrow set i alpha =
+  S.filter (\x -> x `S.member` aux || isGlobal x) set
+  where aux  = S.union aux2 aux3
+        aux2 = S.map negateFormula aux3
+        aux3 = S.fromList $ subFormulasAgent alpha i
+
+-- -----------------------------------------------------------------------------
+-- END: Construction and manipulation of sets
+-- -----------------------------------------------------------------------------
+
+
+
+
 -- -----------------------------------------------------------------------------
 -- BEGIN: Queries on the sets
 -- -----------------------------------------------------------------------------
+
+
+-- | Input: A Set, a closure and an agent
+--   Output: True iff that set is i-elementary
+isIElementary :: SOF -> -- ^ the set we want to check
+                 SOF -> -- ^ the closure of a given formula
+                 Agent -> -- ^ the agent
+                 Bool
+isIElementary set clo i=
+  isConsistent set clo &&
+  isLocallyConsistent set &&
+  isIConsistent set clo i &&
+  isMaximal set clo
+
+
+-- | Input: A Set, and the closure
+--   Output: True iff the set is consistent
+isConsistent :: SOF -> -- ^set we want to check
+                SOF -> -- ^closure of the formula
+                Bool
+isConsistent set clo =
+  -- implication
+  (all (\f -> if f `S.member` set
+        then (getSubFormulasImplication f)!!1 `S.member` set ||
+             (negateFormula $ head (getSubFormulasImplication f)) `S.member` set
+        else not ((getSubFormulasImplication f)!!1 `S.member` set ||
+                  (negateFormula $ head (getSubFormulasImplication f)) `S.member` set))
+      (S.filter isImplication clo))
+  &&
+  -- negation
+  (all (\f -> f `S.notMember` set || negateFormula f `S.notMember` set) set)
+
+
+-- | Input: A Set
+--   Output: True iff (Gpsi in s => psi)
+isLocallyConsistent :: SOF -> Bool
+isLocallyConsistent set =
+  all (\f -> not(isGlobally f) || tailFormula f `S.member` set) set
+
 
 -- Input: A set of formulas and, closure and an agent
 -- Output: True iff the set is i- consistent
@@ -32,9 +110,9 @@ isIConsistent :: SOF ->
                  Agent ->
                  Bool
 isIConsistent s clo i =
-  all (\x -> (not (tailFormula x `S.member` s) || x `S.member` s)
+  all (\x -> (tailFormula x `S.notMember` s || x `S.member` s)
              &&
-             (not (x `S.member` s) || tailFormula x `S.member` s))
+             (x `S.notMember` s || tailFormula x `S.member` s))
       (S.filter (`isAtAgent` i) clo)
 
 
@@ -44,7 +122,7 @@ isMaximal :: SOF -> -- the set we want to check
              SOF -> -- the closure of the formula
              Bool
 isMaximal s clo =
-  all (\x -> not (x `S.member` s) || negateFormula x `S.member` s) clo
+  all (\x -> x `S.member` s || negateFormula x `S.member` s) clo
 -- -----------------------------------------------------------------------------
 -- END: Queries on the sets
 -- -----------------------------------------------------------------------------
