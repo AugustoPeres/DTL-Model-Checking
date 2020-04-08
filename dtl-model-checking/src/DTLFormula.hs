@@ -24,6 +24,9 @@ module DTLFormula
   , tailFormula
   , communicationAgent
   , getSubFormulasImplication
+  , PropSymbol
+  , wrapGlobal
+  , wrapLocal
   ) where
 
 import           Data.Maybe
@@ -64,6 +67,14 @@ instance Show GlobalFormula
 instance Show Formula
   where show (FromLocal a)  = show a
         show (FromGlobal a) = show a
+
+-- Wraps a local formula
+wrapLocal :: LocalFormula -> Formula
+wrapLocal f = FromLocal f
+
+-- Wraps a local formula
+wrapGlobal :: GlobalFormula -> Formula
+wrapGlobal f = FromGlobal f
 
 
 

@@ -15,7 +15,9 @@ import Data.Maybe
 data GNBA s a = GNBA { states        :: [s],
                        inicialStates :: [s],
                        finalSets     :: [[s]],
-                       delta         :: Map.Map s [(a, s)] }
+                       delta         :: Map.Map s [(a, s)]
+                     }
+                     deriving (Show)
 
 
 -- -----------------------------------------------------------------------------

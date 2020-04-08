@@ -1,5 +1,6 @@
 module Ielementary (SOF, isMaximal, isIConsistent, isLocallyConsistent,
-                    isConsistent, downArrow, isIElementary, iElementarySetsAgent)
+                    isConsistent, downArrow, isIElementary, iElementarySetsAgent,
+                    haveSameGlobalFormulas)
 where
 
 import qualified Data.Set   as S
@@ -64,6 +65,10 @@ downArrow set i alpha =
 -- BEGIN: Queries on the sets
 -- -----------------------------------------------------------------------------
 
+-- | Input: Two sets
+--   Ouptut: True iff the sets have the same global formulas
+haveSameGlobalFormulas :: SOF -> SOF -> Bool
+haveSameGlobalFormulas s1 s2 = S.filter isGlobal s1 == S.filter isGlobal s2
 
 -- | Input: A Set, a closure and an agent
 --   Output: True iff that set is i-elementary

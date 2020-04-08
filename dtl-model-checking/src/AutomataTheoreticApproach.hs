@@ -10,8 +10,24 @@ import qualified DTLFormula    as F
 import qualified DTS           as T
 import qualified GNBA          as G
 import qualified NBA           as N
+import qualified Ielementary as I
 
--- import missing that has the GNBA module
+-- The data marker is just used to mark the states.
+-- Recall from the definition in the thesis that states
+-- marked with Upsilon are used to express runs were the
+-- non satisfaction happens finitely often.
+data Marker = Upsilon | None deriving (Eq, Ord, Show)
+
+-- Now we can represent the states of the GNBA as tuples of marked sets
+-- of formulas, In fact they are only propositional symbols, but to simplify
+-- we use SOF
+type GNBAState = [(I.SOF, Marker)]
+
+-- The alphabet symbols consists of actions concatenated with actions
+-- Both are represented here as strings
+type Action = String
+type AlphabetSymbol = (I.SOF, Action)
+
 
 -- -----------------------------------------------------------------------------
 -- BEGIN: Description of the module
@@ -34,7 +50,7 @@ import qualified NBA           as N
 --   This is the MAIN function on the module.
 modelCheck :: (Ord s, Ord i, Ord prop, Ord a) =>
               T.DTS s i prop a ->
-              F.Formula ->
+              F.GlobalFormula ->
               Int -> -- number of agents
               Bool
 modelCheck t alpha n = undefined
@@ -44,12 +60,45 @@ modelCheck t alpha n = undefined
 -- BEGIN: Making the automaton for the complementary language
 -- -----------------------------------------------------------------------------
 
-makeComplementaryGNBA :: F.Formula ->
+-- | Input: A Formula, number of agents, a list of action, a list
+--          with all propositional symbols for the agents
+--   Output: An GNBA that accepts the complementary language
+--   NOTE: We assume that the agents start in 1..n. Must always
+--         account for this when accessing states in the automaton.
+--   NOTE: The numbers in the formulas must be consistent with the number of
+--         agents provided. Otherwise this will not work
+makeComplementaryGNBA :: F.GlobalFormula ->
                          Int ->          -- number of agents
-                         [[a]] ->        -- list with the actions
-                         [S.Set prop] -> -- propositional symbols for each agent
-                         G.GNBA (S.Set F.Formula) (S.Set prop, a)
-makeComplementaryGNBA = undefined
+                         [[Action]] ->        -- list with the actions
+                         [I.SOF] -> -- propositional symbols for each agent
+                         G.GNBA GNBAState AlphabetSymbol
+makeComplementaryGNBA alpha n acts props=
+  -- first we add the states--
+  foldr (\a b -> G.addState b a) G.empty statesGNBA
+  where statesGNBA = makeStatesGNBA alpha n clo props
+        clo = F.closureFormula alpha n
+
+
+-- | Input: A formula, The number of agents, the closure of the
+--          formula, the propositional letter
+--   Output: A list with the states for the GNBA, i.e, A list of lists [[(I.SOF, Marker)]]
+makeStatesGNBA :: F.GlobalFormula -> -- the formula
+                  Int -> -- the number of agents
+                  I.SOF -> -- the closure
+                  [I.SOF] -> -- a list with the propositional symbols of each agent
+                  [GNBAState]
+makeStatesGNBA alpha n clo props =
+  foldr (\a b -> [b' ++ [a'] | a' <- a, b' <- b,
+                               I.haveSameGlobalFormulas (fst a') (fst $ head b'),
+                               (snd $ head b') == snd a'])
+        (map (\x -> [x]) (head iElemSets))
+        (tail iElemSets)
+  where iElemSets = map (\x -> concatMap (\y -> if F.wrapGlobal alpha `S.member` y
+                                                then [(y, Upsilon), (y, None)]
+                                                else [(y, None)])
+                                         (I.iElementarySetsAgent clo x (props!!(x-1)) alpha)
+                        )
+                        [1..n]
 -- -----------------------------------------------------------------------------
 -- END: Making the automaton for the complementary language
 -- -----------------------------------------------------------------------------
@@ -145,3 +194,13 @@ g = N.NBA { N.states = [1, 2, 3],
             N.inicialStates = [1, 2],
             N.delta = M.fromList [(1, [((S.fromList ["p"],"a"), 1), ((S.fromList ["q"],"b"), 2), ((S.fromList ["p"], "a"), 3)]) , (2, [((S.fromList ["p", "q"], "c"),3), ((S.fromList ["p", "q"],"a"), 1), ((S.fromList [],"a"), 3)]), (3, [(((S.fromList ["p", "q"],"c")), 3)])]
         }
+
+-- some test formulas
+psiTeseLocal1 = F.Not ((F.Globally (F.PropositionalSymbol "p")))
+psiTeseLocal2 = F.Not (F.Next (F.PropositionalSymbol "q"))
+psiTeseGlobal = F.GImplies (F.Local 1 psiTeseLocal1) (F.Local 2 psiTeseLocal2)
+testPsiTestAutomaton = makeComplementaryGNBA psiTeseGlobal
+                                             2
+                                             []
+                                             [S.fromList [F.FromLocal $ F.PropositionalSymbol "p"],
+                                              S.fromList [F.FromLocal $F.PropositionalSymbol "q"]]
