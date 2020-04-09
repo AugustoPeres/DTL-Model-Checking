@@ -36,19 +36,19 @@ type PropSymbol = String
 type Agent = Int
 
 data LocalFormula = PropositionalSymbol PropSymbol
-                  | Implies LocalFormula LocalFormula
+                  | Not LocalFormula
                   | Next LocalFormula
                   | Globally LocalFormula
                   | Comunicates Agent LocalFormula
-                  | Not LocalFormula
+                  | Implies LocalFormula LocalFormula
                     deriving (Eq, Ord)
 
-data GlobalFormula = GImplies GlobalFormula GlobalFormula
-                   | Local Agent LocalFormula
+data GlobalFormula = Local Agent LocalFormula
                    | GNot GlobalFormula
+                   | GImplies GlobalFormula GlobalFormula
                      deriving (Eq, Ord)
 
-data Formula = FromGlobal GlobalFormula | FromLocal LocalFormula deriving (Eq, Ord)
+data Formula = FromLocal LocalFormula | FromGlobal GlobalFormula deriving (Eq, Ord)
 
 -- Instancing my custom show for the formulas
 instance Show LocalFormula
