@@ -1,10 +1,12 @@
-module GNBA (GNBA(..), empty, addState, addTransition, addFinalSet, addToInitialStates)
+module GNBA (GNBA(..), empty, addState, addTransition, addFinalSet, addToInitialStates,
+            getNeighbours)
 where
 
 
 import qualified          Data.Map.Strict as Map
 import Data.List (union)
 import Data.Maybe
+import CommonTypes
 
 -- This module contains everything needed to work with
 -- general non deterministic Buchi automatons
@@ -18,6 +20,40 @@ data GNBA s a = GNBA { states        :: [s],
                        delta         :: Map.Map s [(a, s)]
                      }
                      deriving (Show)
+
+instance (Show s, Show a, Ord s) => FiniteGraphRepresentable (GNBA s a) where
+  toGraphviz auto =
+    "digraph finite_state_machine {\n" ++
+    "node[width = 2 height = 2 fontsize = 10];\n" ++
+    foldr (\a b -> b ++ foldr (\a' b' -> b' ++ "\"" ++ show a ++ "\"" ++
+                                         "->" ++ "\"" ++ show (snd a') ++ "\" " ++
+                                         "[label =\" " ++ show (fst a') ++ "\"];\n")
+                              ""
+                              (getNeighbours auto a))
+          ""
+          (states auto)
+    ++
+    "}"
+
+
+-- -----------------------------------------------------------------------------
+-- BEGIN: Getterns for the GNBA
+-- -----------------------------------------------------------------------------
+
+-- | Input: Automaton and a state
+--   Output: A list with all the neighbours and the respective letter
+--           that causes the transition
+getNeighbours :: (Ord s) =>
+                 GNBA s a ->
+                 s ->
+                 [(a, s)]
+getNeighbours auto s =
+  fromMaybe [] ((delta auto) Map.!? s)
+-- -----------------------------------------------------------------------------
+-- END: Getterns for the GNBA
+-- -----------------------------------------------------------------------------
+
+
 
 
 -- -----------------------------------------------------------------------------
@@ -37,9 +73,6 @@ addToInitialStates gnba state=
        (inicialStates gnba `union` [state])
        (finalSets gnba)
        (delta gnba)
-
-
-
 
 
 -- | Input: A GNBA and a state,

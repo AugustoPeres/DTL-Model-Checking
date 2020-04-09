@@ -1,9 +1,11 @@
+{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE FlexibleInstances #-}
 module AutomataTheoreticApproach (modelCheck)
   where
 
 
 import           CommonTypes
-import           Data.List     (union)
+import           Data.List     (union, (\\))
 import qualified Data.Map.Lazy as M
 import qualified Data.Set      as S
 import qualified DTLFormula    as F
@@ -45,6 +47,32 @@ type AlphabetSymbol = (I.SOF, Action)
 -- END: Description of the module
 -- -----------------------------------------------------------------------------
 
+-- -----------------------------------------------------------------------------
+-- BEGIN: Here we instance show for our types, this makes debuging much easir
+-- -----------------------------------------------------------------------------
+
+instance {-# OVERLAPPING #-} Show GNBAState where
+    show [] = ""
+    show (x:xs) =
+      "{" ++
+      S.foldr (\a b -> b ++ show a ++ ",") "" (fst x ) ++ (show (snd x)) ++
+      "}\\n" ++
+      show xs
+
+instance {-# OVERLAPPING #-} Show Action where
+  show a = a
+
+instance {-# OVERLAPPING #-} Show AlphabetSymbol where
+  show sigma = "<" ++
+               S.foldr (\a b -> b ++ show a ++ ",") "" (fst sigma) ++
+               show (snd sigma) ++
+               ">"
+-- -----------------------------------------------------------------------------
+-- END: Here we instance show for our types, this makes debuging much easir
+-- -----------------------------------------------------------------------------
+
+
+
 -- | Input: A transition system, a DTL formula and an integer.
 --   Output: Yes iff the transition system satisfies the formula
 --   This is the MAIN function on the module.
@@ -73,23 +101,132 @@ makeComplementaryGNBA :: F.GlobalFormula ->
                          [I.SOF] -> -- propositional symbols for each agent
                          G.GNBA GNBAState AlphabetSymbol
 makeComplementaryGNBA alpha n acts props=
-  -- second the intial states--
-  foldr (\a b -> G.addToInitialStates b a)
-        -- first we add the states --
-        (foldr (\a b -> G.addState b a) G.empty statesGNBA)
-        -- first we add the states --
-        initialStates
-  -- second the initial states --
+  -- third we add the transitions --
+  foldr (\a b -> G.addTransition b (fst $ fst a) (snd a) (snd $ fst a))
+        -- second the initial states--
+        (foldr (\a b -> G.addToInitialStates b a)
+              -- first we add the states --
+              (foldr (\a b -> G.addState b a) G.empty statesGNBA)
+              -- first we add the states --
+              initialStates)
+        -- second the initial states --
+        (filter (\a -> canBeGlobalAutomatonTransition alpha clo acts props (fst $ fst a) (snd $ fst a) (snd a))
+                 possibleTransitions)
+  -- third we add the transition
   where statesGNBA = makeStatesGNBA alpha n clo props
         clo = F.closureFormula alpha n
         initialStates = filter canBeInitialState statesGNBA
+        possibleTransitions = makeMaybeTransitions statesGNBA props acts
 
+
+-- | Input: The states in the automaton, a list with propSymbols for the agents
+--          a list with all the actions
+--   Output: A list with all the combinations of ((state, state), propSymbol)
+--           regardless of that being a possible transition unde the automaton
+--           rules or not.
+makeMaybeTransitions :: [GNBAState] -> -- all the states in the automaton
+                        [I.SOF] -> -- the list with all the prop symbols
+                        [[Action]] ->
+                        [((GNBAState, GNBAState), AlphabetSymbol)]
+makeMaybeTransitions states propSymbols acts =
+  [((s1, s2), symb) | s1 <- states, s2 <- states, symb <- mkSymb s1]
+  where mkSymb s = [(foldr (\a b -> b `S.union` (S.filter F.isLiteral a))
+                           S.empty
+                           (map fst s), act) | act <- allActions]
+        allActions = foldr (\a b -> b `union` a) [] acts
+
+
+-- | Input: a global formula, the closure, a list with actions , a list
+--          with the propositional symbols for the agents, two states and
+--          a propositional letter
+--   Output: True if it is a transition in the local automaton
+canBeGlobalAutomatonTransition :: F.GlobalFormula ->
+                                  I.SOF -> -- the closure
+                                  [[Action]] -> -- actions of the agents
+                                  [I.SOF] -> -- the prop symbols for the agents
+                                  GNBAState -> -- state 1
+                                  GNBAState -> -- state 2
+                                  AlphabetSymbol -> -- letter responsible for the transition
+                                  Bool
+canBeGlobalAutomatonTransition alpha clo acts props s1 s2 sigma =
+  -- first we check that all the states have coherent proposisitonal symbols --
+  -- Check to see if i can just reduce this to s simple filter
+  -- and then a check if sigma == filter isLiteral state
+  all (\q -> (fst q) `S.intersection` (snd q) == propLetter `S.intersection` (snd q))
+      (zip departureSets literals) &&
+  -- If it is not an action of agent i then the states must remain unchanged --
+  all (\i -> s1!!(i - 1) == s2!!(i - 1)) sleppyAgents &&
+  -- If it is an action of the agent then the rules for the local transition --
+  -- function must hold --
+  all (canBeLocalAutomatonTransition alpha clo s1 s2) activatedAgents &&
+  -- Now we express the first rule for the communication formulas --
+  all (\i -> all (\f -> F.tailFormula f `S.member` (arrivalSets!!(F.communicationAgent f - 1))
+                        && F.communicationAgent f `elem` activatedAgents)
+                 (S.filter F.isCommunication (arrivalSets!!(i - 1)))
+      )
+      activatedAgents &&
+  -- Finally second communication rule --
+  all (\i -> all (\f -> not ((F.communicationAgent f `elem` activatedAgents
+                         && F.tailFormula f `S.member` (arrivalSets!!(F.communicationAgent f - 1))))
+                        || (f `S.member` (arrivalSets!!(i - 1)))
+                 )
+                 (filter F.isCommunication (F.subFormulasAgent alpha i))
+      )
+      activatedAgents
+  where literals = map (\x -> x `S.union` (S.map F.negateFormula x)) props
+        departureSets = map fst s1
+        arrivalSets = map fst s2
+        propLetter = fst sigma
+        action = snd sigma
+        n = length s1 -- number of agents corresponds to the length of each state
+        activatedAgents = filter (\i -> action `elem` acts!!(i - 1)) [1..n]
+        sleppyAgents = [1..n] \\ activatedAgents
+
+
+-- | Input: A a global formula, the closure of the formula, two states,
+--          and the agent for which we want to check.
+--   Output: True iff s2 in delta(s1, symb) in the complementary LOCAL automaton
+canBeLocalAutomatonTransition :: F.GlobalFormula -> -- the formula we want to model check
+                                 I.SOF -> -- the closure of the formula
+                                 GNBAState -> -- the departure state
+                                 GNBAState -> -- the arrival state
+                                 F.Agent -> -- the agent for which we want to check
+                                 Bool
+canBeLocalAutomatonTransition alpha clo s1 s2 i =
+  -- for X\pi --
+  verifiesNext pairedStateSets &&
+  -- for G\psi --
+  verifiesGlobally pairedStateSets &&
+  -- for th Upsilon marker --
+  verifiesUpsilon pairedStates
+  where destinySet = fst (s2!!(i - 1))
+        departureSet = fst (s1!!(i - 1))
+        pairedStateSets = (departureSet, destinySet)
+        pairedStates = (s1!!(i - 1), s2!!(i - 1))
+        -- literals = map (\x -> x `S.union` (S.map F.negateFormula x)) props this goes to the global function
+        alpha' = F.wrapGlobal alpha -- just so we can be in the Formulas domain
+        -- the next condition --
+        verifiesNext (s, s') =
+          all (\x -> (x `S.notMember` s || F.tailFormula x `S.member` s') &&
+                     (F.tailFormula x `S.notMember` s' || x `S.member` s)
+              )
+              (S.filter F.isNext clo)
+        -- the global condition --
+        verifiesGlobally (s, s') =
+          all (\x -> (x `S.notMember` s || (F.tailFormula x `S.member` s && x `S.member` s')) &&
+                     (not (F.tailFormula x `S.member` s && x `S.member` s') || x `S.member` s)
+              )
+              (S.filter F.isGlobally clo)
+        -- the upsilon condition --
+        verifiesUpsilon (s, s') = (not (snd s == Upsilon) || (alpha' `S.member` fst s && snd s' == Upsilon)) &&
+                                  (not (alpha' `S.member` fst s && snd s' == Upsilon) || snd s == Upsilon)
 
 -- | Input: A state of the GNBA
 --   Output: True iff that state can be an initial state
 canBeInitialState :: GNBAState -> Bool
 canBeInitialState state =
   all (\x -> (not (I.hasCommunicationFormulas (fst x))) && (snd x /= Upsilon) ) state
+
 
 -- | Input: A formula, The number of agents, the closure of the
 --          formula, the propositional letter
@@ -213,6 +350,20 @@ psiTeseLocal2 = F.Not (F.Next (F.PropositionalSymbol "q"))
 psiTeseGlobal = F.GImplies (F.Local 1 psiTeseLocal1) (F.Local 2 psiTeseLocal2)
 testPsiTestAutomaton = makeComplementaryGNBA psiTeseGlobal
                                              2
-                                             []
+                                             [["a", "b"], ["a", "c"]]
                                              [S.fromList [F.FromLocal $ F.PropositionalSymbol "p"],
                                               S.fromList [F.FromLocal $F.PropositionalSymbol "q"]]
+
+
+-- smaller automatons for easy testing --
+psiSmall = F.Next (F.PropositionalSymbol "p")
+psiSmallGlobal = F.Local 1 psiSmall
+psiSmallAuto = makeComplementaryGNBA psiSmallGlobal 1 [["a"]] [S.fromList [F.FromLocal $ F.PropositionalSymbol "p"]]
+
+psiSmall2 = F.Globally (F.PropositionalSymbol "p")
+psiSmallGlobal2 = F.Local 1 psiSmall2
+psiSmallAuto2 = makeComplementaryGNBA psiSmallGlobal2 1 [["a"]] [S.fromList [F.FromLocal $ F.PropositionalSymbol "p"]]
+
+psiSmall3 = F.Comunicates 2 (F.PropositionalSymbol "q")
+psiSmallGlobal3 = F.Local 1 psiSmall3
+psiSmallAuto3 = makeComplementaryGNBA psiSmallGlobal3 2 [["a", "b"], ["a", "c"]] [S.fromList [F.FromLocal $ F.PropositionalSymbol "p"], S.fromList [F.FromLocal $ F.PropositionalSymbol "q"]]
