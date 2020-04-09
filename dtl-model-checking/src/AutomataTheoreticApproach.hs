@@ -166,8 +166,8 @@ canBeGlobalAutomatonTransition alpha clo acts props s1 s2 sigma =
       )
       activatedAgents &&
   -- Finally second communication rule --
-  all (\i -> all (\f -> not ((F.communicationAgent f `elem` activatedAgents
-                         && F.tailFormula f `S.member` (arrivalSets!!(F.communicationAgent f - 1))))
+  all (\i -> all (\f -> not (F.communicationAgent f `elem` activatedAgents
+                         && F.tailFormula f `S.member` (arrivalSets!!(F.communicationAgent f - 1)))
                         || (f `S.member` (arrivalSets!!(i - 1)))
                  )
                  (filter F.isCommunication (F.subFormulasAgent alpha i))
