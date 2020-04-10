@@ -1,8 +1,7 @@
+{-# LANGUAGE FlexibleInstances    #-}
 {-# LANGUAGE TypeSynonymInstances #-}
-{-# LANGUAGE FlexibleInstances #-}
 module AutomataTheoreticApproach (modelCheck)
   where
-
 
 import           CommonTypes
 import           Data.List     (union, (\\))
@@ -11,8 +10,8 @@ import qualified Data.Set      as S
 import qualified DTLFormula    as F
 import qualified DTS           as T
 import qualified GNBA          as G
+import qualified Ielementary   as I
 import qualified NBA           as N
-import qualified Ielementary as I
 
 -- The data marker is just used to mark the states.
 -- Recall from the definition in the thesis that states
@@ -76,12 +75,88 @@ instance {-# OVERLAPPING #-} Show AlphabetSymbol where
 -- | Input: A transition system, a DTL formula and an integer.
 --   Output: Yes iff the transition system satisfies the formula
 --   This is the MAIN function on the module.
-modelCheck :: (Ord s, Ord i, Ord prop, Ord a) =>
-              T.DTS s i prop a ->
+--   NOTE: We force the transition system to have:
+--            1. Integer agents
+--            2. Propositional Symbols of type formula
+--            3. Actions of type action
+--         because that was how we defined the DTL formulas module
+--         Therefore that must be the language that is accepted by the automaton
+--         therefore the transition system must be of all of these types
+modelCheck :: Ord s =>
+              T.DTS s Int F.Formula Action ->
               F.GlobalFormula ->
               Int -> -- number of agents
               Bool
-modelCheck t alpha n = undefined
+modelCheck dts alpha n =
+  True
+  where gComp = makeComplementaryGNBA alpha n actions props
+        actions = map (T.getActionsAgent dts) [1..n]
+        props = map (S.fromList . T.getPropSymbolsAgent dts) [1..n]
+
+
+
+-- -----------------------------------------------------------------------------
+-- BEGIN: Converting the GNBA to the NBA used in model checking
+-- -----------------------------------------------------------------------------
+
+-- | Input: An GNBA for a given language, the alphabet of the automaton
+--   Output: The NBA for the same language
+--   METHOD: Principles of model checking
+--   NOTE: isTransitionAllowed might not work when there are no acceptance sets
+convertGNBAToNBA :: (Eq s, Eq a, Ord s) => G.GNBA s a -> [a] -> N.NBA a
+convertGNBAToNBA g alphabet =
+  -- 4. finally adding the transitions --
+  foldr (\x b -> N.addTransition b (fst $ fst x) (snd x) (snd $ fst x))
+        -- 3. addint the final states --
+        (foldr (\x b -> N.addFinalState b x)
+              -- 2. adding the inicial states --
+              (foldr (\x b -> N.addInitialState b x)
+                    -- first we add the states to an empty automaton --
+                    (foldr (\x b -> N.addState b x)
+                          N.empty
+                          (statesAsInts))
+                    -- end adding the states to the empty automaton --
+                    (filter isInitialState statesAsInts))
+              -- 2. adding the initial states --
+              (filter isFinallState statesAsInts))
+        -- 3. adding the final states --
+        (filter (\x -> isTransition (fst $ fst x) (snd x) (snd $ fst x)) intTrans)
+  -- 4. finally adding the transitions --
+  where nbaStates = [(q, k') | q <- gnbaStates, k' <- [1..k]]
+        nbaInitialStates = [(q, 1) | q <- gnbaInitialStates]
+        nbaFinalStates = [(q, 1) | q <- gnbaFirstSet]
+        gnbaStates = G.states g
+        gnbaInitialStates = G.inicialStates g
+        gnbafinalSets = G.finalSets g
+        statesAsInts = M.keys stateMap
+        gnbaFirstSet = if null gnbafinalSets then [] else head gnbafinalSets
+        k = length gnbafinalSets
+        -- now we need to store the representation of the sets --
+        stateMap = M.fromList (zip [1..] nbaStates)
+        -- now we make a list with all the possible transitions --
+        possibleTransitions = [((s, s'), sigma) | s <- nbaStates,
+                                                  s' <- nbaStates,
+                                                  sigma <- alphabet,
+                                                  isTransitionAllowed s sigma s']
+        isTransitionAllowed s sigma s' =
+          if fst s `notElem` gnbafinalSets!!(snd s - 1)
+          then (sigma, fst s') `elem` (G.getNeighbours g (fst s))
+               && snd s == snd s'
+          else (sigma, fst s') `elem` (G.getNeighbours g (fst s))
+               && snd s' == successor (snd s)
+        successor i = if i < k then i + 1 else 1
+        isInitialState x =  (stateMap M.! x) `elem` nbaInitialStates
+        isFinallState x = (stateMap M.! x) `elem` nbaFinalStates
+        isTransition s a s' = ((stateMap M.! s, stateMap M.! s'), a)
+                              `elem` possibleTransitions
+        intTrans = [((s, s'), sigma) | s <- statesAsInts,
+                                       s' <- statesAsInts,
+                                       sigma <- alphabet]
+
+-- -----------------------------------------------------------------------------
+-- END: Converting the GNBA to the NBA used in model checking
+-- -----------------------------------------------------------------------------
+
 
 
 -- -----------------------------------------------------------------------------
@@ -346,6 +421,10 @@ dotProduct dts auto =
                                                                (S.fromList $ T.getLabel dts (fst s'), a)))
                                       &&
                                       (T.isTransitionOfSystem dts (fst s) (fst s') a)
+
+
+
+
 
 -- just some test instances --
 t = T.DTS {T.states = S.fromList [1, 2, 3, 4],

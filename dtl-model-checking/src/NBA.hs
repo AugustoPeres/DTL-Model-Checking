@@ -1,6 +1,7 @@
 module NBA
   (
-  NBA(..), State, getNeighbours, getNeighboursGeneral,
+  NBA(..), State, getNeighbours, getNeighboursGeneral, deleteNeverAcceptingStates,
+  empty, addState, addInitialState, addFinalState, addTransition
   ) where
 
 
@@ -50,6 +51,9 @@ instance Show a => FiniteGraphRepresentable (NBA a) where
 type LevelRanking = Map.Map State Int -- We represent _|_ as -1
 
 
+-- this is just an empty automaton
+empty :: NBA a
+empty = NBA [] [] [] Map.empty
 -- ---------------------------------------------------------------------
 -- Transformation Functions : These functions are used to tranform
 --                            some given automaton. They always return
@@ -58,6 +62,50 @@ type LevelRanking = Map.Map State Int -- We represent _|_ as -1
 --
 --                            For example deleting or adding a state.
 -- ---------------------------------------------------------------------
+
+-- | Just adds a new state to the automaton
+addState :: NBA a -> State -> NBA a
+addState nba s =
+  NBA (states nba `union` [s])
+      (inicialStates nba)
+      (finalStates nba)
+      (delta nba)
+
+
+-- | Adds a new initial state to the automaton
+addInitialState :: NBA a -> State -> NBA a
+addInitialState nba s =
+  NBA (states nba `union` [s])
+      (inicialStates nba `union` [s])
+      (finalStates nba)
+      (delta nba)
+
+
+-- | Adds a new final state to the automaton
+addFinalState :: NBA a -> State -> NBA a
+addFinalState nba s =
+  NBA (states nba `union` [s])
+      (inicialStates nba)
+      (finalStates nba `union` [s])
+      (delta nba)
+
+
+-- | Adds a new transition
+addTransition :: (Eq a) =>
+                 NBA a ->
+                 State-> -- departure state
+                 a -> -- propositional letter responsible
+                 State-> -- arrival state
+                 NBA a
+addTransition nba s sigma s' =
+  NBA (states nba)
+      (inicialStates nba)
+      (finalStates nba)
+      (Map.insert s newTransition d)
+  where newTransition = (fromMaybe [] ((d Map.!? s))) `union` [(sigma, s')]
+        d = delta nba
+
+
 
 -- | This function reverses the automaton. Meaning that all
 --   arrows will be reversed.
