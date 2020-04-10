@@ -101,23 +101,52 @@ makeComplementaryGNBA :: F.GlobalFormula ->
                          [I.SOF] -> -- propositional symbols for each agent
                          G.GNBA GNBAState AlphabetSymbol
 makeComplementaryGNBA alpha n acts props=
-  -- third we add the transitions --
-  foldr (\a b -> G.addTransition b (fst $ fst a) (snd a) (snd $ fst a))
-        -- second the initial states--
-        (foldr (\a b -> G.addToInitialStates b a)
-              -- first we add the states --
-              (foldr (\a b -> G.addState b a) G.empty statesGNBA)
-              -- first we add the states --
-              initialStates)
-        -- second the initial states --
-        (filter (\a -> canBeGlobalAutomatonTransition alpha clo acts props (fst $ fst a) (snd $ fst a) (snd a))
-                 possibleTransitions)
-  -- third we add the transition
+  -- finally we add the final sets
+  foldr (\a b -> G.addFinalSet b a)
+        -- third we add the transitions --
+        (foldr (\a b -> G.addTransition b (fst $ fst a) (snd a) (snd $ fst a))
+              -- second the initial states--
+              (foldr (\a b -> G.addToInitialStates b a)
+                    -- first we add the states --
+                    (foldr (\a b -> G.addState b a) G.empty statesGNBA)
+                    -- first we add the states --
+                    initialStates)
+              -- second the initial states --
+              (filter (\a -> canBeGlobalAutomatonTransition alpha clo acts props (fst $ fst a) (snd $ fst a) (snd a))
+                        possibleTransitions))
+        -- third we add the transition
+        finalSets
+  -- finally we add the final sets
   where statesGNBA = makeStatesGNBA alpha n clo props
         clo = F.closureFormula alpha n
         initialStates = filter canBeInitialState statesGNBA
         possibleTransitions = makeMaybeTransitions statesGNBA props acts
+        finalSets = makeFinalSets statesGNBA alpha clo n
 
+
+-- | Input: The states in the automaton, the global formula, the closure of the
+--          the global formula, the number of agents
+--   Output: The final sets of the automaton
+makeFinalSets :: [GNBAState] -> -- all the states
+                 F.GlobalFormula -> -- the formula
+                 I.SOF -> -- the closure of the formula
+                 Int -> -- the number of agents
+                 [[GNBAState]]
+makeFinalSets sts alpha clo n =
+  [makerFormula f i | f <- globalFromulas, i <- agents] ++
+  -- now we join the states witnessed by upsilon
+  [[s | s <- sts, conditionUpsilon s]]
+  where globalFromulas = S.toList $ S.filter F.isGlobally clo
+        agents = [1..n]
+        alpha' = F.wrapGlobal alpha
+        -- makerFormula :: formula -> [GNBAStates]
+        -- devolve os estados de todos os agentes para uma formula
+        makerFormula f i = [s | s <- sts, conditionFormulaHolds f s i]
+        conditionFormulaHolds f s i = f `S.member` (fst $ s!!(i-1))
+                                      || (F.tailFormula f `S.notMember` (fst $ s!!(i-1)))
+        -- because all the sets have the same global formulas and the same mark we can see
+        -- if a set is in the upsilon accepting state just by testing the local state
+        conditionUpsilon s = snd (head s) == Upsilon || alpha' `S.notMember` fst (head s)
 
 -- | Input: The states in the automaton, a list with propSymbols for the agents
 --          a list with all the actions
