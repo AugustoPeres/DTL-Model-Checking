@@ -1,5 +1,5 @@
 #+TITLE: DTL model checking algorithms
-#+AUTOH: Augusto Peres
+#+AUTHOR: Augusto Peres
 
 * Introduction
 
@@ -14,10 +14,127 @@
    properly done and could use improvement. Not a major concern as I can simply
    use the labels which usually also derive order 
 
-** TODO: The algorithm Exists for binary decision diagrams 
-   DEADLINE: <2020-04-03 Fri>
+** KNOWCAUSE the algorithm is returning always True.
+   The automatons seem to be in working order. The problem must be, therefore on
+   the ~dotProduct~ function or when passing to NBA.
+
+   This is caused by the fact that the product does not yield a deterministic
+   automaton. The only solution is to change the module ~DTS.hs~ to allow for
+   non deterministic transition systems in regards to the transition function.
+
+   There was also a bug that was solved. The was the labels of the transitions
+   system would not cause transitions in the automatons using the definition
+   with $\sigma = q \cap Lit_i$.
+
+   Instead I should use the condition
+   $$\sigma = q \cap AP_i$$
+   Then I must change the definition of alphabet to consist only of valuations.
+
+   The previous correction fixed 3 of the 4 test instances
+
+   It still fails for more than one agent
+
+   <2020-04-14 Tue> Found one mistake. I also needed to check that the states in
+   strongly connected components were in fact in a loop. Failure to verify this
+   causes problems for components with one or more states. 
+
+** DONE Make the model checking algorithm at the top level
+   CLOSED: [2020-04-13 Mon 18:57]
+   This is, just complete the function using with kosaraju,
+ 
+** TODO Put the function to convert between NBAs and GNBAs in the AutomataTheoreticApproach module [2/2]
+   - [X] Make the function from scratch
+   - [X] Test the function
+     Seems to be working for the small examples tested.
+
+** DONE Make the complementary automaton using my algorithm [4/4]
+   CLOSED: [2020-04-10 Fri 15:09]
+   - [X] Make the states
+   - [X] Make the initial states
+   - [X] Make the transition function [3/3]
+     - [X] Create a function to test if a transition is possible from a state to
+       another state according to a propositional symbol.
+     - [X] Create a list with all pairs of states, /i.e/, [(s, s'), ... (w, w')]
+     - [X] For each of those pairs of states test the transitions under the
+       correct propositional  symbols, /i.e/, the symbols present at those
+       states. If said transition is possible then add it to the automaton using
+       a fold.
+   - [X] Make the accepting sets
+
+** TODO Document the boolean formulas package
+
+** TODO Transition systems module first steps [2/3]
+   - [ ] Instance graphviz to be able to see the transition systems
+     Not really that important and difficult to do because of the constructors
+     I can ignore the constructors and just use show on everything. Then, in the
+     module, ModelCheckingAppraoch.hs I instance the show properly for all the
+     types used.
+     ([[file+sys:~/Documents/universidade/MMA/tese-talvez/DTL-Model-Checking/dtl-model-checking/src/DTS.hs][file-here)]]
+   - [X] Make manipulation function for states and transitions [2/2]
+     - [X] Adding states
+     - [X] Adding transitions
+   - [X] Function for strongly connected components. This is fundamental for the
+     persistence property verification.
+     NOTE: This will be pretty much the same
+     as the functions for the NBA module. Maybe I can instance a class for both
+     of them.
+     checking
+**** FIXED When using kosaraju
+     CLOSED: [2020-04-05 Sun 20:27]
+     Does not work property for the transition system ~s = [1, 2, 3, 4]~ with
+     transition relation ~3 -a-> 4~ ~4 -a-> 1~.
+     NOTE: This probably also implies that there is a BUG in the module for the NBA 
+
+     This is caused by a bad implementation of the algorithm.
+     Possible fix: +instead of dfs, I should use the visit subroutine presented in+
+     +Wikipedia. Challenging because there is no state in haskell.+     
+
+     This was not necessary, I just needed to change the function ~makeOrder~ to
+     prepend /i.e/, ~makeOrder dfs ++ order~. Tested on all the automaton test
+     instances and it worked
+
+** TODO Making a function that generates random DTS to be used in model
+   NOTE: That this function should preserve all the rules for the transition
+   relation. Also note that, in our implementation, we are assuming that the
+   transition relation is deterministic. Caution when implementing this in a
+   random way.
+
+
+** DONE The algorithm Exists for binary decision diagrams 
+   CLOSED: [2020-04-03 Fri 11:36] DEADLINE: <2020-04-03 Fri>
    
-** TODO: Start working on the implementation of distributed transition systems
+** DONE Start working on the implementation of distributed transition systems
+   CLOSED: [2020-04-03 Fri 12:03]
+
+** DONE Make the PRIME functions work for something  other than strings. 
+   CLOSED: [2020-04-06 Mon 21:22]
+   I do not really need this in the ROBDD.hs module. I can implement the
+   functions like image, prime... In the module responsible for the symbolic
+   model checking problem.
+
+** DONE Adding transitions in a safe way. 
+   CLOSED: [2020-04-05 Sun 16:55]
+   Just create checks to see if the transition is possible. Then create
+   function like ~addTransitionSafe~.
 
 * Things I am not totally happy about 
+
+** When converting GNBA -> NBA.
+   I believe this function would be much more efficient if I make a direction
+   construction of the transition function.
+   See the note in the comment of ~convertGNBAToNBA~ in the aoutomata theoretic module.
+
+** In the algorithm restrict
+   I should have the option to return a bdd with something else other than ~Int~
+   type.
+   Possible fix. I could always change the labels of the binary decision
+   diagrams to always be ~Int~. This would prevent me from having all that work
+   with orders.
+
+** The ~dotProduct~ function is actually less efficient when independent from the DTS module.  
+
+** When using ~Data.Set~ I have to jump back and forth using ~fromList~ and ~toList~
+   Maybe I should change the implementation of the distributed transition
+   systems to work over lists instead. This would even make it more similar to
+   the implementation of the automatons.
 

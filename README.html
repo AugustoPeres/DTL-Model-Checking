@@ -1,0 +1,562 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+<head>
+<!-- 2020-04-14 Tue 00:41 -->
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>DTL model checking algorithms</title>
+<meta name="generator" content="Org mode" />
+<meta name="author" content="Augusto Peres" />
+<style type="text/css">
+ <!--/*--><![CDATA[/*><!--*/
+  .title  { text-align: center;
+             margin-bottom: .2em; }
+  .subtitle { text-align: center;
+              font-size: medium;
+              font-weight: bold;
+              margin-top:0; }
+  .todo   { font-family: monospace; color: red; }
+  .done   { font-family: monospace; color: green; }
+  .priority { font-family: monospace; color: orange; }
+  .tag    { background-color: #eee; font-family: monospace;
+            padding: 2px; font-size: 80%; font-weight: normal; }
+  .timestamp { color: #bebebe; }
+  .timestamp-kwd { color: #5f9ea0; }
+  .org-right  { margin-left: auto; margin-right: 0px;  text-align: right; }
+  .org-left   { margin-left: 0px;  margin-right: auto; text-align: left; }
+  .org-center { margin-left: auto; margin-right: auto; text-align: center; }
+  .underline { text-decoration: underline; }
+  #postamble p, #preamble p { font-size: 90%; margin: .2em; }
+  p.verse { margin-left: 3%; }
+  pre {
+    border: 1px solid #ccc;
+    box-shadow: 3px 3px 3px #eee;
+    padding: 8pt;
+    font-family: monospace;
+    overflow: auto;
+    margin: 1.2em;
+  }
+  pre.src {
+    position: relative;
+    overflow: visible;
+    padding-top: 1.2em;
+  }
+  pre.src:before {
+    display: none;
+    position: absolute;
+    background-color: white;
+    top: -10px;
+    right: 10px;
+    padding: 3px;
+    border: 1px solid black;
+  }
+  pre.src:hover:before { display: inline;}
+  /* Languages per Org manual */
+  pre.src-asymptote:before { content: 'Asymptote'; }
+  pre.src-awk:before { content: 'Awk'; }
+  pre.src-C:before { content: 'C'; }
+  /* pre.src-C++ doesn't work in CSS */
+  pre.src-clojure:before { content: 'Clojure'; }
+  pre.src-css:before { content: 'CSS'; }
+  pre.src-D:before { content: 'D'; }
+  pre.src-ditaa:before { content: 'ditaa'; }
+  pre.src-dot:before { content: 'Graphviz'; }
+  pre.src-calc:before { content: 'Emacs Calc'; }
+  pre.src-emacs-lisp:before { content: 'Emacs Lisp'; }
+  pre.src-fortran:before { content: 'Fortran'; }
+  pre.src-gnuplot:before { content: 'gnuplot'; }
+  pre.src-haskell:before { content: 'Haskell'; }
+  pre.src-hledger:before { content: 'hledger'; }
+  pre.src-java:before { content: 'Java'; }
+  pre.src-js:before { content: 'Javascript'; }
+  pre.src-latex:before { content: 'LaTeX'; }
+  pre.src-ledger:before { content: 'Ledger'; }
+  pre.src-lisp:before { content: 'Lisp'; }
+  pre.src-lilypond:before { content: 'Lilypond'; }
+  pre.src-lua:before { content: 'Lua'; }
+  pre.src-matlab:before { content: 'MATLAB'; }
+  pre.src-mscgen:before { content: 'Mscgen'; }
+  pre.src-ocaml:before { content: 'Objective Caml'; }
+  pre.src-octave:before { content: 'Octave'; }
+  pre.src-org:before { content: 'Org mode'; }
+  pre.src-oz:before { content: 'OZ'; }
+  pre.src-plantuml:before { content: 'Plantuml'; }
+  pre.src-processing:before { content: 'Processing.js'; }
+  pre.src-python:before { content: 'Python'; }
+  pre.src-R:before { content: 'R'; }
+  pre.src-ruby:before { content: 'Ruby'; }
+  pre.src-sass:before { content: 'Sass'; }
+  pre.src-scheme:before { content: 'Scheme'; }
+  pre.src-screen:before { content: 'Gnu Screen'; }
+  pre.src-sed:before { content: 'Sed'; }
+  pre.src-sh:before { content: 'shell'; }
+  pre.src-sql:before { content: 'SQL'; }
+  pre.src-sqlite:before { content: 'SQLite'; }
+  /* additional languages in org.el's org-babel-load-languages alist */
+  pre.src-forth:before { content: 'Forth'; }
+  pre.src-io:before { content: 'IO'; }
+  pre.src-J:before { content: 'J'; }
+  pre.src-makefile:before { content: 'Makefile'; }
+  pre.src-maxima:before { content: 'Maxima'; }
+  pre.src-perl:before { content: 'Perl'; }
+  pre.src-picolisp:before { content: 'Pico Lisp'; }
+  pre.src-scala:before { content: 'Scala'; }
+  pre.src-shell:before { content: 'Shell Script'; }
+  pre.src-ebnf2ps:before { content: 'ebfn2ps'; }
+  /* additional language identifiers per "defun org-babel-execute"
+       in ob-*.el */
+  pre.src-cpp:before  { content: 'C++'; }
+  pre.src-abc:before  { content: 'ABC'; }
+  pre.src-coq:before  { content: 'Coq'; }
+  pre.src-groovy:before  { content: 'Groovy'; }
+  /* additional language identifiers from org-babel-shell-names in
+     ob-shell.el: ob-shell is the only babel language using a lambda to put
+     the execution function name together. */
+  pre.src-bash:before  { content: 'bash'; }
+  pre.src-csh:before  { content: 'csh'; }
+  pre.src-ash:before  { content: 'ash'; }
+  pre.src-dash:before  { content: 'dash'; }
+  pre.src-ksh:before  { content: 'ksh'; }
+  pre.src-mksh:before  { content: 'mksh'; }
+  pre.src-posh:before  { content: 'posh'; }
+  /* Additional Emacs modes also supported by the LaTeX listings package */
+  pre.src-ada:before { content: 'Ada'; }
+  pre.src-asm:before { content: 'Assembler'; }
+  pre.src-caml:before { content: 'Caml'; }
+  pre.src-delphi:before { content: 'Delphi'; }
+  pre.src-html:before { content: 'HTML'; }
+  pre.src-idl:before { content: 'IDL'; }
+  pre.src-mercury:before { content: 'Mercury'; }
+  pre.src-metapost:before { content: 'MetaPost'; }
+  pre.src-modula-2:before { content: 'Modula-2'; }
+  pre.src-pascal:before { content: 'Pascal'; }
+  pre.src-ps:before { content: 'PostScript'; }
+  pre.src-prolog:before { content: 'Prolog'; }
+  pre.src-simula:before { content: 'Simula'; }
+  pre.src-tcl:before { content: 'tcl'; }
+  pre.src-tex:before { content: 'TeX'; }
+  pre.src-plain-tex:before { content: 'Plain TeX'; }
+  pre.src-verilog:before { content: 'Verilog'; }
+  pre.src-vhdl:before { content: 'VHDL'; }
+  pre.src-xml:before { content: 'XML'; }
+  pre.src-nxml:before { content: 'XML'; }
+  /* add a generic configuration mode; LaTeX export needs an additional
+     (add-to-list 'org-latex-listings-langs '(conf " ")) in .emacs */
+  pre.src-conf:before { content: 'Configuration File'; }
+
+  table { border-collapse:collapse; }
+  caption.t-above { caption-side: top; }
+  caption.t-bottom { caption-side: bottom; }
+  td, th { vertical-align:top;  }
+  th.org-right  { text-align: center;  }
+  th.org-left   { text-align: center;   }
+  th.org-center { text-align: center; }
+  td.org-right  { text-align: right;  }
+  td.org-left   { text-align: left;   }
+  td.org-center { text-align: center; }
+  dt { font-weight: bold; }
+  .footpara { display: inline; }
+  .footdef  { margin-bottom: 1em; }
+  .figure { padding: 1em; }
+  .figure p { text-align: center; }
+  .equation-container {
+    display: table;
+    text-align: center;
+    width: 100%;
+  }
+  .equation {
+    vertical-align: middle;
+  }
+  .equation-label {
+    display: table-cell;
+    text-align: right;
+    vertical-align: middle;
+  }
+  .inlinetask {
+    padding: 10px;
+    border: 2px solid gray;
+    margin: 10px;
+    background: #ffffcc;
+  }
+  #org-div-home-and-up
+   { text-align: right; font-size: 70%; white-space: nowrap; }
+  textarea { overflow-x: auto; }
+  .linenr { font-size: smaller }
+  .code-highlighted { background-color: #ffff00; }
+  .org-info-js_info-navigation { border-style: none; }
+  #org-info-js_console-label
+    { font-size: 10px; font-weight: bold; white-space: nowrap; }
+  .org-info-js_search-highlight
+    { background-color: #ffff00; color: #000000; font-weight: bold; }
+  .org-svg { width: 90%; }
+  /*]]>*/-->
+</style>
+<script type="text/javascript">
+/*
+@licstart  The following is the entire license notice for the
+JavaScript code in this tag.
+
+Copyright (C) 2012-2020 Free Software Foundation, Inc.
+
+The JavaScript code in this tag is free software: you can
+redistribute it and/or modify it under the terms of the GNU
+General Public License (GNU GPL) as published by the Free Software
+Foundation, either version 3 of the License, or (at your option)
+any later version.  The code is distributed WITHOUT ANY WARRANTY;
+without even the implied warranty of MERCHANTABILITY or FITNESS
+FOR A PARTICULAR PURPOSE.  See the GNU GPL for more details.
+
+As additional permission under GNU GPL version 3 section 7, you
+may distribute non-source (e.g., minimized or compacted) forms of
+that code without the copy of the GNU GPL normally required by
+section 4, provided you include this license notice and a URL
+through which recipients can access the Corresponding Source.
+
+
+@licend  The above is the entire license notice
+for the JavaScript code in this tag.
+*/
+<!--/*--><![CDATA[/*><!--*/
+ function CodeHighlightOn(elem, id)
+ {
+   var target = document.getElementById(id);
+   if(null != target) {
+     elem.cacheClassElem = elem.className;
+     elem.cacheClassTarget = target.className;
+     target.className = "code-highlighted";
+     elem.className   = "code-highlighted";
+   }
+ }
+ function CodeHighlightOff(elem, id)
+ {
+   var target = document.getElementById(id);
+   if(elem.cacheClassElem)
+     elem.className = elem.cacheClassElem;
+   if(elem.cacheClassTarget)
+     target.className = elem.cacheClassTarget;
+ }
+/*]]>*///-->
+</script>
+<script type="text/x-mathjax-config">
+    MathJax.Hub.Config({
+        displayAlign: "center",
+        displayIndent: "0em",
+
+        "HTML-CSS": { scale: 100,
+                        linebreaks: { automatic: "false" },
+                        webFont: "TeX"
+                       },
+        SVG: {scale: 100,
+              linebreaks: { automatic: "false" },
+              font: "TeX"},
+        NativeMML: {scale: 100},
+        TeX: { equationNumbers: {autoNumber: "AMS"},
+               MultLineWidth: "85%",
+               TagSide: "right",
+               TagIndent: ".8em"
+             }
+});
+</script>
+<script type="text/javascript"
+        src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-AMS_HTML"></script>
+</head>
+<body>
+<div id="content">
+<h1 class="title">DTL model checking algorithms</h1>
+<div id="table-of-contents">
+<h2>Table of Contents</h2>
+<div id="text-table-of-contents">
+<ul>
+<li><a href="#org4e130cf">1. Introduction</a></li>
+<li><a href="#orgf088147">2. Features</a></li>
+<li><a href="#org2aa20b5">3. Details on the implementation</a></li>
+<li><a href="#orgae1b13b">4. Next steps</a>
+<ul>
+<li><a href="#orgb943ba6">4.1. <span class="todo KNOWCAUSE">KNOWCAUSE</span> Cannot create Maps with ROBDDs</a></li>
+<li><a href="#orgd86a0f5">4.2. <span class="todo KNOWCAUSE">KNOWCAUSE</span> the algorithm is returning always True.</a></li>
+<li><a href="#org15cdc97">4.3. <span class="done DONE">DONE</span> Make the model checking algorithm at the top level</a></li>
+<li><a href="#org5d9e33d">4.4. <span class="todo TODO">TODO</span> Put the function to convert between NBAs and GNBAs in the AutomataTheoreticApproach module <code>[2/2]</code></a></li>
+<li><a href="#orgdeae282">4.5. <span class="done DONE">DONE</span> Make the complementary automaton using my algorithm <code>[4/4]</code></a></li>
+<li><a href="#org8cc7547">4.6. <span class="todo TODO">TODO</span> Document the boolean formulas package</a></li>
+<li><a href="#org134a478">4.7. <span class="todo TODO">TODO</span> Transition systems module first steps <code>[2/3]</code></a></li>
+<li><a href="#orgbeeff5a">4.8. <span class="todo TODO">TODO</span> Making a function that generates random DTS to be used in model</a></li>
+<li><a href="#org3376910">4.9. <span class="done DONE">DONE</span> The algorithm Exists for binary decision diagrams</a></li>
+<li><a href="#org2b91c5e">4.10. <span class="done DONE">DONE</span> Start working on the implementation of distributed transition systems</a></li>
+<li><a href="#org9b47dc2">4.11. <span class="done DONE">DONE</span> Make the PRIME functions work for something  other than strings.</a></li>
+<li><a href="#org61abace">4.12. <span class="done DONE">DONE</span> Adding transitions in a safe way.</a></li>
+</ul>
+</li>
+<li><a href="#orgaf39b0b">5. Things I am not totally happy about</a>
+<ul>
+<li><a href="#org67f2171">5.1. When converting GNBA -&gt; NBA.</a></li>
+<li><a href="#org49ac8b8">5.2. In the algorithm restrict</a></li>
+<li><a href="#org75364c2">5.3. The <code>dotProduct</code> function is actually less efficient when independent from the DTS module.</a></li>
+<li><a href="#org6241b54">5.4. When using <code>Data.Set</code> I have to jump back and forth using <code>fromList</code> and <code>toList</code></a></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+
+<div id="outline-container-org4e130cf" class="outline-2">
+<h2 id="org4e130cf"><span class="section-number-2">1</span> Introduction</h2>
+</div>
+
+<div id="outline-container-orgf088147" class="outline-2">
+<h2 id="orgf088147"><span class="section-number-2">2</span> Features</h2>
+</div>
+
+<div id="outline-container-org2aa20b5" class="outline-2">
+<h2 id="org2aa20b5"><span class="section-number-2">3</span> Details on the implementation</h2>
+</div>
+
+<div id="outline-container-orgae1b13b" class="outline-2">
+<h2 id="orgae1b13b"><span class="section-number-2">4</span> Next steps</h2>
+<div class="outline-text-2" id="text-4">
+</div>
+<div id="outline-container-orgb943ba6" class="outline-3">
+<h3 id="orgb943ba6"><span class="section-number-3">4.1</span> <span class="todo KNOWCAUSE">KNOWCAUSE</span> Cannot create Maps with ROBDDs</h3>
+<div class="outline-text-3" id="text-4-1">
+<p>
+This is because the instance for order (in the case of the leafs) is not
+properly done and could use improvement. Not a major concern as I can simply
+use the labels which usually also derive order 
+</p>
+</div>
+</div>
+
+<div id="outline-container-orgd86a0f5" class="outline-3">
+<h3 id="orgd86a0f5"><span class="section-number-3">4.2</span> <span class="todo KNOWCAUSE">KNOWCAUSE</span> the algorithm is returning always True.</h3>
+<div class="outline-text-3" id="text-4-2">
+<p>
+The automatons seem to be in working order. The problem must be, therefore on
+the <code>dotProduct</code> function or when passing to NBA.
+</p>
+
+<p>
+This is caused by the fact that the product does not yield a deterministic
+automaton. The only solution is to change the module <code>DTS.hs</code> to allow for
+non deterministic transition systems in regards to the transition function.
+</p>
+
+<p>
+There was also a bug that was solved. The was the labels of the transitions
+system would not cause transitions in the automatons using the definition
+with \(\sigma = q \cap Lit_i\).
+</p>
+
+<p>
+Instead I should use the condition
+\[\sigma = q \cap AP_i\]
+Then I must change the definition of alphabet to consist only of valuations.
+</p>
+
+<p>
+The previous correction fixed 3 of the 4 test instances
+</p>
+
+<p>
+It still fails for more than one agent
+</p>
+
+<p>
+<span class="timestamp-wrapper"><span class="timestamp">&lt;2020-04-14 Tue&gt; </span></span> Found one mistake. I also needed to check that the states in
+strongly connected components were in fact in a loop. Failure to verify this
+causes problems for components with one or more states. 
+</p>
+</div>
+</div>
+
+<div id="outline-container-org15cdc97" class="outline-3">
+<h3 id="org15cdc97"><span class="section-number-3">4.3</span> <span class="done DONE">DONE</span> Make the model checking algorithm at the top level</h3>
+<div class="outline-text-3" id="text-4-3">
+<p>
+This is, just complete the function using with kosaraju,
+</p>
+</div>
+</div>
+
+<div id="outline-container-org5d9e33d" class="outline-3">
+<h3 id="org5d9e33d"><span class="section-number-3">4.4</span> <span class="todo TODO">TODO</span> Put the function to convert between NBAs and GNBAs in the AutomataTheoreticApproach module <code>[2/2]</code></h3>
+<div class="outline-text-3" id="text-4-4">
+<ul class="org-ul">
+<li class="on"><code>[X]</code> Make the function from scratch</li>
+<li class="on"><code>[X]</code> Test the function
+Seems to be working for the small examples tested.</li>
+</ul>
+</div>
+</div>
+
+<div id="outline-container-orgdeae282" class="outline-3">
+<h3 id="orgdeae282"><span class="section-number-3">4.5</span> <span class="done DONE">DONE</span> Make the complementary automaton using my algorithm <code>[4/4]</code></h3>
+<div class="outline-text-3" id="text-4-5">
+<ul class="org-ul">
+<li class="on"><code>[X]</code> Make the states</li>
+<li class="on"><code>[X]</code> Make the initial states</li>
+<li class="on"><code>[X]</code> Make the transition function <code>[3/3]</code>
+<ul class="org-ul">
+<li class="on"><code>[X]</code> Create a function to test if a transition is possible from a state to
+another state according to a propositional symbol.</li>
+<li class="on"><code>[X]</code> Create a list with all pairs of states, <i>i.e</i>, [(s, s'), &#x2026; (w, w')]</li>
+<li class="on"><code>[X]</code> For each of those pairs of states test the transitions under the
+correct propositional  symbols, <i>i.e</i>, the symbols present at those
+states. If said transition is possible then add it to the automaton using
+a fold.</li>
+</ul></li>
+<li class="on"><code>[X]</code> Make the accepting sets</li>
+</ul>
+</div>
+</div>
+
+<div id="outline-container-org8cc7547" class="outline-3">
+<h3 id="org8cc7547"><span class="section-number-3">4.6</span> <span class="todo TODO">TODO</span> Document the boolean formulas package</h3>
+</div>
+
+<div id="outline-container-org134a478" class="outline-3">
+<h3 id="org134a478"><span class="section-number-3">4.7</span> <span class="todo TODO">TODO</span> Transition systems module first steps <code>[2/3]</code></h3>
+<div class="outline-text-3" id="text-4-7">
+<ul class="org-ul">
+<li class="off"><code>[&#xa0;]</code> Instance graphviz to be able to see the transition systems
+Not really that important and difficult to do because of the constructors
+I can ignore the constructors and just use show on everything. Then, in the
+module, ModelCheckingAppraoch.hs I instance the show properly for all the
+types used.
+(<a href="file:///Users/augusto/Documents/universidade/MMA/tese-talvez/DTL-Model-Checking/dtl-model-checking/src/DTS.hs">file-here)</a></li>
+<li class="on"><code>[X]</code> Make manipulation function for states and transitions <code>[2/2]</code>
+<ul class="org-ul">
+<li class="on"><code>[X]</code> Adding states</li>
+<li class="on"><code>[X]</code> Adding transitions</li>
+</ul></li>
+<li class="on"><code>[X]</code> Function for strongly connected components. This is fundamental for the
+persistence property verification.
+NOTE: This will be pretty much the same
+as the functions for the NBA module. Maybe I can instance a class for both
+of them.
+checking</li>
+</ul>
+</div>
+<ol class="org-ol">
+<li><a id="orgaa0307e"></a><span class="done FIXED">FIXED</span> When using kosaraju<br />
+<div class="outline-text-5" id="text-4-7-0-1">
+<p>
+Does not work property for the transition system <code>s = [1, 2, 3, 4]</code> with
+transition relation <code>3 -a-&gt; 4</code> <code>4 -a-&gt; 1</code>.
+NOTE: This probably also implies that there is a BUG in the module for the NBA 
+</p>
+
+<p>
+This is caused by a bad implementation of the algorithm.
+Possible fix: <del>instead of dfs, I should use the visit subroutine presented in</del>
+<del>Wikipedia. Challenging because there is no state in haskell.</del>     
+</p>
+
+<p>
+This was not necessary, I just needed to change the function <code>makeOrder</code> to
+prepend <i>i.e</i>, <code>makeOrder dfs ++ order</code>. Tested on all the automaton test
+instances and it worked
+</p>
+</div>
+</li>
+</ol>
+</div>
+
+<div id="outline-container-orgbeeff5a" class="outline-3">
+<h3 id="orgbeeff5a"><span class="section-number-3">4.8</span> <span class="todo TODO">TODO</span> Making a function that generates random DTS to be used in model</h3>
+<div class="outline-text-3" id="text-4-8">
+<p>
+NOTE: That this function should preserve all the rules for the transition
+relation. Also note that, in our implementation, we are assuming that the
+transition relation is deterministic. Caution when implementing this in a
+random way.
+</p>
+</div>
+</div>
+
+
+<div id="outline-container-org3376910" class="outline-3">
+<h3 id="org3376910"><span class="section-number-3">4.9</span> <span class="done DONE">DONE</span> The algorithm Exists for binary decision diagrams</h3>
+<div class="outline-text-3" id="text-4-9">
+</div>
+</div>
+
+<div id="outline-container-org2b91c5e" class="outline-3">
+<h3 id="org2b91c5e"><span class="section-number-3">4.10</span> <span class="done DONE">DONE</span> Start working on the implementation of distributed transition systems</h3>
+<div class="outline-text-3" id="text-4-10">
+</div>
+</div>
+
+<div id="outline-container-org9b47dc2" class="outline-3">
+<h3 id="org9b47dc2"><span class="section-number-3">4.11</span> <span class="done DONE">DONE</span> Make the PRIME functions work for something  other than strings.</h3>
+<div class="outline-text-3" id="text-4-11">
+<p>
+I do not really need this in the ROBDD.hs module. I can implement the
+functions like image, prime&#x2026; In the module responsible for the symbolic
+model checking problem.
+</p>
+</div>
+</div>
+
+<div id="outline-container-org61abace" class="outline-3">
+<h3 id="org61abace"><span class="section-number-3">4.12</span> <span class="done DONE">DONE</span> Adding transitions in a safe way.</h3>
+<div class="outline-text-3" id="text-4-12">
+<p>
+Just create checks to see if the transition is possible. Then create
+function like <code>addTransitionSafe</code>.
+</p>
+</div>
+</div>
+</div>
+
+<div id="outline-container-orgaf39b0b" class="outline-2">
+<h2 id="orgaf39b0b"><span class="section-number-2">5</span> Things I am not totally happy about</h2>
+<div class="outline-text-2" id="text-5">
+</div>
+<div id="outline-container-org67f2171" class="outline-3">
+<h3 id="org67f2171"><span class="section-number-3">5.1</span> When converting GNBA -&gt; NBA.</h3>
+<div class="outline-text-3" id="text-5-1">
+<p>
+I believe this function would be much more efficient if I make a direction
+construction of the transition function.
+See the note in the comment of <code>convertGNBAToNBA</code> in the aoutomata theoretic module.
+</p>
+</div>
+</div>
+
+<div id="outline-container-org49ac8b8" class="outline-3">
+<h3 id="org49ac8b8"><span class="section-number-3">5.2</span> In the algorithm restrict</h3>
+<div class="outline-text-3" id="text-5-2">
+<p>
+I should have the option to return a bdd with something else other than <code>Int</code>
+type.
+Possible fix. I could always change the labels of the binary decision
+diagrams to always be <code>Int</code>. This would prevent me from having all that work
+with orders.
+</p>
+</div>
+</div>
+
+<div id="outline-container-org75364c2" class="outline-3">
+<h3 id="org75364c2"><span class="section-number-3">5.3</span> The <code>dotProduct</code> function is actually less efficient when independent from the DTS module.</h3>
+</div>
+
+<div id="outline-container-org6241b54" class="outline-3">
+<h3 id="org6241b54"><span class="section-number-3">5.4</span> When using <code>Data.Set</code> I have to jump back and forth using <code>fromList</code> and <code>toList</code></h3>
+<div class="outline-text-3" id="text-5-4">
+<p>
+Maybe I should change the implementation of the distributed transition
+systems to work over lists instead. This would even make it more similar to
+the implementation of the automatons.
+</p>
+</div>
+</div>
+</div>
+</div>
+<div id="postamble" class="status">
+<p class="author">Author: Augusto Peres</p>
+<p class="date">Created: 2020-04-14 Tue 00:41</p>
+<p class="validation"><a href="http://validator.w3.org/check?uri=referer">Validate</a></p>
+</div>
+</body>
+</html>
