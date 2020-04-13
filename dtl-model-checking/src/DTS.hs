@@ -5,7 +5,7 @@ module DTS (DTS (..), getAllActions, getLabel, getAgents,
             isReachableFromStates, deleteStates, deleteDeadStates)
 where
 
-import Data.List ((\\))
+import Data.List ((\\), union)
 import           CommonTypes
 import qualified Data.Map.Lazy as M
 import           Data.Maybe
@@ -35,7 +35,7 @@ data DTS s i prop a = DTS {
                           initialStates      :: S.Set s,
                           propSymbols        :: M.Map i (S.Set prop),
                           labelingFunction   :: M.Map (s, i) (S.Set prop),
-                          transitionRelation :: M.Map (s, a) s
+                          transitionRelation :: M.Map (s, a) [s]
                           } deriving (Show)
 -- -----------------------------------------------------------------------------
 -- END: Definition of destributed transition system
@@ -158,7 +158,10 @@ addTransition dts departure arrival action =
       initialStates      = initialStates dts,
       propSymbols        = propSymbols dts,
       labelingFunction   = labelingFunction dts,
-      transitionRelation = M.insert (departure, action) arrival (transitionRelation dts)
+      transitionRelation = M.insertWith (union)
+                                        (departure, action)
+                                        [arrival]
+                                        (transitionRelation dts)
       }
 
 
@@ -194,9 +197,9 @@ deleteStates dts list =
       (foldr (\x y -> if fst x `S.member` rmsets then M.delete x y else y) l keysLb)
       -- now we delete from the transition function , this is more complicated
       -- because we must also delete arrows going to those states --
-      (M.foldrWithKey (\k x y -> if fst k `S.member` rmsets || x `S.member` rmsets
+      (M.foldrWithKey (\k x y -> if fst k `S.member` rmsets
                                         then M.delete k y
-                                        else y)
+                                        else M.adjust (\\ list) k y)
                              tr
                              tr)
   where rmsets = S.fromList list
@@ -219,9 +222,13 @@ deleteDeadStates dts =
 --   NOTE: A transition is allowed if:
 --         1. The action is not an action of agent i then the propositional
 --            symbols cannot change
---         2. If the departure state doesn't have already a transition by that action.
+--         DEPRECATED: 2. If the departure state doesn't have already a
+--                     transition by that action. now we allow for non determinism
+--                     in the action. This is because the model checking problem
+--                     requires so for the dot product. The user should be careful
+--                     when creating deterministic transition systems.
 --   In summary this checks if a condition can be added
-isTransitionAllowed :: (Ord a, Ord i, Ord s, Ord prop) =>
+isTransitionAllowed :: (Ord a, Ord s, Eq prop, Ord i) =>
                        DTS s i prop a ->
                        s ->
                        s ->
@@ -229,9 +236,6 @@ isTransitionAllowed :: (Ord a, Ord i, Ord s, Ord prop) =>
                        Bool
 isTransitionAllowed dts departure arrival action =
   all (\x -> l M.! (departure, x) == l M.! (arrival, x)) agentsNotEvolving
-  &&
-  -- checks condition 2. --
-  (departure, action) `notElem` (M.keys (transitionRelation dts))
   where agentsNotEvolving = filter (\x -> action `S.notMember` (acts M.! x)) agents
         agents = M.keys (acts)
         acts = actions dts
@@ -249,7 +253,7 @@ isTransitionOfSystem :: (Ord s, Ord a) =>
 isTransitionOfSystem dts s1 s2 act =
   if goal == Nothing
   then False
-  else (fromJust goal) == s2
+  else s2 `elem` (fromJust goal)
   where goal = (transitionRelation dts)M.!?(s1, act)
 
 -- | Input: A DTS
@@ -286,9 +290,19 @@ transpose dts =
         initialStates = initialStates dts,
         propSymbols = propSymbols dts,
         labelingFunction = labelingFunction dts,
-        transitionRelation = M.foldrWithKey (\k a b -> M.insert (a, snd k) (fst k) b)
-                                           M.empty
-                                           (transitionRelation dts)}
+        transitionRelation =
+          M.foldrWithKey (\k x y -> foldr (\x' y' -> M.insertWith
+                                                    (union)
+                                                    (x',snd k)
+                                                    [fst k]
+                                                    y')
+                                          y
+                                          x
+                         )
+                         M.empty
+                         (transitionRelation dts)}
+
+
 -- | Input: A DTS, a Q and, list of visited states and a boolean value
 --   Output: A list with all the states that can be visited
 --           from all the states in the Q over the transition system given
@@ -315,6 +329,7 @@ isReachableFromStates :: (Ord a, Ord i, Ord s, Ord prop) =>
                          Bool
 isReachableFromStates dts state list = any (\x -> state `elem` dfs dts [x] [] True) list
 
+
 -- | Input: A DTS and a state.
 --   Output: A list with all the nodes directly acced from that node
 getNeighbours :: (Ord s , Ord i, Ord a, Ord prop) =>
@@ -324,7 +339,7 @@ getNeighbours :: (Ord s , Ord i, Ord a, Ord prop) =>
 getNeighbours dts state =
   M.foldrWithKey f [] tr
   where tr = transitionRelation dts
-        f k a b = (if fst k == state then b ++ [a] else b)
+        f k a b = (if fst k == state then b ++ a else b)
 
 
 -- | Input: A DTS
@@ -412,4 +427,4 @@ tKosBug = DTS {states = S.fromList [1, 2, 3, 4],
                                       ((4, 1), S.fromList []),
                                       ((4, 2), S.fromList [])
                                       ],
-        transitionRelation = M.fromList [((3, "a"), 4), ((4, "a"), 1)]}
+        transitionRelation = M.fromList [((3, "a"), [4]), ((4, "a"), [1])]}

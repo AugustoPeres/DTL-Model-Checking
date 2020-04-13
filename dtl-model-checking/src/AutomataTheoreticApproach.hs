@@ -217,7 +217,7 @@ makeComplementaryGNBA alpha n acts props=
   where statesGNBA = makeStatesGNBA alpha n clo props
         clo = F.closureFormula alpha n
         initialStates = filter canBeInitialState statesGNBA
-        possibleTransitions = makeMaybeTransitions statesGNBA props acts
+        possibleTransitions = makeMaybeTransitions statesGNBA acts
         finalSets = makeFinalSets statesGNBA alpha clo n
 
 
@@ -251,12 +251,12 @@ makeFinalSets sts alpha clo n =
 --           regardless of that being a possible transition unde the automaton
 --           rules or not.
 makeMaybeTransitions :: [GNBAState] -> -- all the states in the automaton
-                        [I.SOF] -> -- the list with all the prop symbols
+                        --[I.SOF] -> -- the list with all the prop symbols
                         [[Action]] ->
                         [((GNBAState, GNBAState), AlphabetSymbol)]
-makeMaybeTransitions states propSymbols acts =
+makeMaybeTransitions states acts =
   [((s1, s2), symb) | s1 <- states, s2 <- states, symb <- mkSymb s1]
-  where mkSymb s = [(foldr (\a b -> b `S.union` (S.filter F.isLiteral a))
+  where mkSymb s = [(foldr (\a b -> b `S.union` (S.filter F.isPropSymbol a))
                            S.empty
                            (map fst s), act) | act <- allActions]
         allActions = foldr (\a b -> b `union` a) [] acts
@@ -278,8 +278,9 @@ canBeGlobalAutomatonTransition alpha clo acts props s1 s2 sigma =
   -- first we check that all the states have coherent proposisitonal symbols --
   -- Check to see if i can just reduce this to s simple filter
   -- and then a check if sigma == filter isLiteral state
-  all (\q -> (fst q) `S.intersection` (snd q) == propLetter `S.intersection` (snd q))
-      (zip departureSets literals) &&
+  -- all (\q -> (fst q) `S.intersection` (snd q) == propLetter `S.intersection` (snd q))
+  --    (zip departureSets literals) &&
+  all (\q -> S.filter F.isPropSymbol (fst q) == propLetter) s1 &&
   -- If it is not an action of agent i then the states must remain unchanged --
   all (\i -> s1!!(i - 1) == s2!!(i - 1)) sleppyAgents &&
   -- If it is an action of the agent then the rules for the local transition --
@@ -299,7 +300,8 @@ canBeGlobalAutomatonTransition alpha clo acts props s1 s2 sigma =
                  (filter F.isCommunication (F.subFormulasAgent alpha i))
       )
       activatedAgents
-  where literals = map (\x -> x `S.union` (S.map F.negateFormula x)) props
+  where --atomicPropositions = map
+        --literals = map (\x -> x `S.union` (S.map F.negateFormula x)) props
         departureSets = map fst s1
         arrivalSets = map fst s2
         propLetter = fst sigma
@@ -329,7 +331,6 @@ canBeLocalAutomatonTransition alpha clo s1 s2 i =
         departureSet = fst (s1!!(i - 1))
         pairedStateSets = (departureSet, destinySet)
         pairedStates = (s1!!(i - 1), s2!!(i - 1))
-        -- literals = map (\x -> x `S.union` (S.map F.negateFormula x)) props this goes to the global function
         alpha' = F.wrapGlobal alpha -- just so we can be in the Formulas domain
         -- the next condition --
         verifiesNext (s, s') =
@@ -427,7 +428,7 @@ dotProduct dts auto =
         dtsWithLabels = foldr (\x y -> foldr (\ag y' -> T.addStateLabel y' x ag [snd x])
                                              y
                                              agents)
-                              dtsWithactions
+                              dtsWithInitialStates
                               newStates
         -- adding to the transition relation --
         dtsWithTransitions = foldr (\x y -> T.addTransitionSafe y (fst $ fst x) (snd $ fst x) (snd x) )
@@ -466,7 +467,7 @@ t = T.DTS {T.states = S.fromList [1, 2, 3, 4],
                                       ((4, 1), S.fromList []),
                                       ((4, 2), S.fromList [])
                                       ],
-        T.transitionRelation = M.fromList [((3, "a"), 4), ((4, "a"), 1)]}
+        T.transitionRelation = M.fromList [((3, "a"), [4]), ((4, "a"), [1])]}
 
 g = N.NBA { N.states = [1, 2, 3],
             N.finalStates = [1],
@@ -528,9 +529,22 @@ tThesis = T.DTS {T.states = S.fromList [1, 2, 3, 4] :: S.Set Int,
                                       ((4, 2), S.fromList [])
                                       ],
         T.transitionRelation = M.fromList [
-                                          ((1, "a"), 2),
-                                          ((1, "a"), 4),
-                                          ((1, "b"), 3),
-                                          ((2, "c"), 1),
-                                          ((3, "b"), 1),
-                                          ((4, "a"), 2)]}
+                                          ((1, "a"), [2]),
+                                          ((1, "a"), [4]),
+                                          ((1, "b"), [3]),
+                                          ((2, "c"), [1]),
+                                          ((3, "b"), [1]),
+                                          ((4, "a"), [2])]}
+
+
+oneAgent1 = T.DTS {T.states = S.fromList [1, 2] :: S.Set Int,
+                   T.initialStates = S.fromList [1] :: S.Set Int,
+                   T.actions = M.fromList [(1::Int, S.fromList ["a"])],
+                   T.propSymbols = M.fromList [
+                      (1, S.fromList [F.FromLocal $ F.PropositionalSymbol "p"])],
+                   T.labelingFunction = M.fromList[
+                      ((1, 1), S.fromList [F.FromLocal $ F.PropositionalSymbol "p"]),
+                      ((2, 1), S.fromList [])],
+                   T.transitionRelation = M.fromList[
+                      ((1, "a"), [2]),
+                      ((2, "a"), [1])]}
