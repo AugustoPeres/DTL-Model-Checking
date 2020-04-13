@@ -88,7 +88,8 @@ modelCheck :: Ord s =>
               Int -> -- number of agents
               Bool
 modelCheck dts alpha n =
-  not $ any (\x -> any (\comp -> x `elem` comp)
+  not $ any (\x -> any (\comp -> x `elem` comp &&
+                                 any (\y -> y `elem` T.getNeighbours tDotnbaComp x) comp)
                        reachableSCC)
             persStates
   where gComp = makeComplementaryGNBA alpha n actions props

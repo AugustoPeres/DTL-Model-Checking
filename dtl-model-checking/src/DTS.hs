@@ -2,7 +2,8 @@ module DTS (DTS (..), getAllActions, getLabel, getAgents,
             getPropSymbolsAgent, createFromStates, addStateLabel,
             addToInitialStates, addTransitionSafe, addActionAgent,
             getActionsAgent, isTransitionOfSystem, kosaraju,
-            isReachableFromStates, deleteStates, deleteDeadStates)
+            isReachableFromStates, deleteStates, deleteDeadStates,
+            getNeighbours)
 where
 
 import Data.List ((\\), union)
