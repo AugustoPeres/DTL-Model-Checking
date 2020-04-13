@@ -88,15 +88,17 @@ modelCheck :: Ord s =>
               Int -> -- number of agents
               Bool
 modelCheck dts alpha n =
-  any (\x -> any (\comp -> x `elem` comp) reachableSCC) persStates
+  not $ any (\x -> any (\comp -> x `elem` comp)
+                       reachableSCC)
+            persStates
   where gComp = makeComplementaryGNBA alpha n actions props
         actions = map (T.getActionsAgent dts) [1..n]
         props = map (S.fromList . T.getPropSymbolsAgent dts) [1..n]
         -- now we convert to a NBA --
         nbaComp = convertGNBAToNBA gComp (G.getAlphabet gComp)
         fs = N.finalStates nbaComp
-        -- now we make the dot producto --
-        tDotnbaComp = dotProduct dts nbaComp
+        -- now we make the dot product and then remove irrelevant states --
+        tDotnbaComp = T.deleteDeadStates $ dotProduct dts nbaComp
         initSts = S.toList $ T.initialStates tDotnbaComp
         -- now the states that we are interested for the persistence --
         persStates = S.filter (\x -> (head $ T.getLabel tDotnbaComp x) `elem` fs)
@@ -104,7 +106,9 @@ modelCheck dts alpha n =
         -- strongly connected componets --
         scc = T.kosaraju tDotnbaComp
         -- strongly connected componets that can be reached --
-        reachableSCC = filter (\x -> any (\y -> T.isReachableFromStates tDotnbaComp y initSts) x) scc
+        reachableSCC = filter (\x -> any (\y -> T.isReachableFromStates tDotnbaComp y initSts)
+                                         x)
+                              scc
 
 
 
@@ -496,7 +500,7 @@ psiSmallAuto3 = makeComplementaryGNBA psiSmallGlobal3 2 [["a", "b"], ["a", "c"]]
 
 -- a test instance for the convertions of GNBAs to NBAs
 auto = G.GNBA {
-              G.states = [1, 2, 3, 4, 5],
+              G.states = [1, 2, 3, 4, 5]::[Int],
               G.inicialStates = [1, 2],
               G.finalSets = [[2, 3], [4]],
               G.delta = M.fromList [(1, [("", 2)]),
@@ -504,3 +508,29 @@ auto = G.GNBA {
                                   (3, [("", 1)]),
                                   (4, [("a", 5)]),
                                   (5, [("a", 4)])]}
+-- testing the dot product
+
+tThesis = T.DTS {T.states = S.fromList [1, 2, 3, 4] :: S.Set Int,
+        T.actions = M.fromList [(1::Int, S.fromList ["a", "b"]), (2, S.fromList ["a", "c"])],
+        T.initialStates = S.fromList [1, 4],
+        T.propSymbols = M.fromList [
+            (1, S.fromList [F.FromLocal $ F.PropositionalSymbol "p"]),
+            (2, S.fromList [F.FromLocal $ F.PropositionalSymbol "q"])
+                    ],
+        T.labelingFunction = M.fromList [
+                                      ((1, 1), S.fromList [F.FromLocal $ F.PropositionalSymbol "p"]),
+                                      ((1, 2), S.fromList [F.FromLocal $ F.PropositionalSymbol "q"]),
+                                      ((2, 1), S.fromList [F.FromLocal $ F.PropositionalSymbol "p"]),
+                                      ((2, 2), S.fromList []),
+                                      ((3, 1), S.fromList []),
+                                      ((3, 2), S.fromList [F.FromLocal $ F.PropositionalSymbol "q"]),
+                                      ((4, 1), S.fromList []),
+                                      ((4, 2), S.fromList [])
+                                      ],
+        T.transitionRelation = M.fromList [
+                                          ((1, "a"), 2),
+                                          ((1, "a"), 4),
+                                          ((1, "b"), 3),
+                                          ((2, "c"), 1),
+                                          ((3, "b"), 1),
+                                          ((4, "a"), 2)]}

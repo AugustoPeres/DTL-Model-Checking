@@ -2,7 +2,7 @@ module DTS (DTS (..), getAllActions, getLabel, getAgents,
             getPropSymbolsAgent, createFromStates, addStateLabel,
             addToInitialStates, addTransitionSafe, addActionAgent,
             getActionsAgent, isTransitionOfSystem, kosaraju,
-            isReachableFromStates)
+            isReachableFromStates, deleteStates, deleteDeadStates)
 where
 
 import Data.List ((\\))
@@ -178,6 +178,41 @@ addTransitionSafe dts departure arrival action =
   then addTransition dts departure arrival action
   else dts
 
+
+-- Input: A DTS and a a list of states
+-- Output: A DTS with that state removed
+deleteStates :: (Ord a, Ord i, Ord s, Ord prop) =>
+                DTS s i prop a ->
+                [s] ->
+                DTS s i prop a
+deleteStates dts list =
+  DTS (states dts `S.difference` (rmsets))
+      (actions dts)
+      (initialStates dts `S.difference` (rmsets))
+      (propSymbols dts)
+      -- we must delete the labels of the deleted states --
+      (foldr (\x y -> if fst x `S.member` rmsets then M.delete x y else y) l keysLb)
+      -- now we delete from the transition function , this is more complicated
+      -- because we must also delete arrows going to those states --
+      (M.foldrWithKey (\k x y -> if fst k `S.member` rmsets || x `S.member` rmsets
+                                        then M.delete k y
+                                        else y)
+                             tr
+                             tr)
+  where rmsets = S.fromList list
+        l      = labelingFunction dts
+        keysLb = M.keys l
+        tr = transitionRelation dts
+
+
+-- | Input: A DTS
+--   Output: A DTS with all the states that have no outgoing arrows removed
+deleteDeadStates :: (Ord a, Ord i, Ord s, Ord prop) =>
+                    DTS s i prop a ->
+                    DTS s i prop a
+deleteDeadStates dts =
+  deleteStates dts deadStates
+  where deadStates = S.toList $ S.filter (null . getNeighbours dts) (states dts)
 
 -- | Input: A DTS, two states and an action
 --   Output: True iff that transition is allowed
