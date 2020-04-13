@@ -1,7 +1,8 @@
 module DTS (DTS (..), getAllActions, getLabel, getAgents,
             getPropSymbolsAgent, createFromStates, addStateLabel,
             addToInitialStates, addTransitionSafe, addActionAgent,
-            getActionsAgent, isTransitionOfSystem, kosaraju)
+            getActionsAgent, isTransitionOfSystem, kosaraju,
+            isReachableFromStates)
 where
 
 import Data.List ((\\))
@@ -271,6 +272,13 @@ dfs dts (x:xs) v b
   where neigs = getNeighbours dts x
         newvisited = if x `elem` v then v else v ++ [x]
 
+
+isReachableFromStates :: (Ord a, Ord i, Ord s, Ord prop) =>
+                         DTS s i prop a ->
+                         s -> -- state we want to check
+                         [s] -> -- list of possible departure states
+                         Bool
+isReachableFromStates dts state list = any (\x -> state `elem` dfs dts [x] [] True) list
 
 -- | Input: A DTS and a state.
 --   Output: A list with all the nodes directly acced from that node

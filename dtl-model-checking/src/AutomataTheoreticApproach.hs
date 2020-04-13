@@ -88,10 +88,23 @@ modelCheck :: Ord s =>
               Int -> -- number of agents
               Bool
 modelCheck dts alpha n =
-  True
+  any (\x -> any (\comp -> x `elem` comp) reachableSCC) persStates
   where gComp = makeComplementaryGNBA alpha n actions props
         actions = map (T.getActionsAgent dts) [1..n]
         props = map (S.fromList . T.getPropSymbolsAgent dts) [1..n]
+        -- now we convert to a NBA --
+        nbaComp = convertGNBAToNBA gComp (G.getAlphabet gComp)
+        fs = N.finalStates nbaComp
+        -- now we make the dot producto --
+        tDotnbaComp = dotProduct dts nbaComp
+        initSts = S.toList $ T.initialStates tDotnbaComp
+        -- now the states that we are interested for the persistence --
+        persStates = S.filter (\x -> (head $ T.getLabel tDotnbaComp x) `elem` fs)
+                              (T.states tDotnbaComp)
+        -- strongly connected componets --
+        scc = T.kosaraju tDotnbaComp
+        -- strongly connected componets that can be reached --
+        reachableSCC = filter (\x -> any (\y -> T.isReachableFromStates tDotnbaComp y initSts) x) scc
 
 
 
@@ -103,6 +116,11 @@ modelCheck dts alpha n =
 --   Output: The NBA for the same language
 --   METHOD: Principles of model checking
 --   NOTE: isTransitionAllowed might not work when there are no acceptance sets
+--   NOTE: This could be more efficient if I did not filter through all possible
+--         transition. Instead of filtering through all possible transitions I
+--         could construction delta for the NBA directly. This would prevent
+--         several map lookups to check weather or not a transition is possible.
+--         Might even be easier to write.
 convertGNBAToNBA :: (Eq s, Eq a, Ord s) => G.GNBA s a -> [a] -> N.NBA a
 convertGNBAToNBA g alphabet =
   -- 4. finally adding the transitions --
@@ -475,3 +493,14 @@ psiSmallAuto2 = makeComplementaryGNBA psiSmallGlobal2 1 [["a"]] [S.fromList [F.F
 psiSmall3 = F.Comunicates 2 (F.PropositionalSymbol "q")
 psiSmallGlobal3 = F.Local 1 psiSmall3
 psiSmallAuto3 = makeComplementaryGNBA psiSmallGlobal3 2 [["a", "b"], ["a", "c"]] [S.fromList [F.FromLocal $ F.PropositionalSymbol "p"], S.fromList [F.FromLocal $ F.PropositionalSymbol "q"]]
+
+-- a test instance for the convertions of GNBAs to NBAs
+auto = G.GNBA {
+              G.states = [1, 2, 3, 4, 5],
+              G.inicialStates = [1, 2],
+              G.finalSets = [[2, 3], [4]],
+              G.delta = M.fromList [(1, [("", 2)]),
+                                  (2, [("", 3)]),
+                                  (3, [("", 1)]),
+                                  (4, [("a", 5)]),
+                                  (5, [("a", 4)])]}

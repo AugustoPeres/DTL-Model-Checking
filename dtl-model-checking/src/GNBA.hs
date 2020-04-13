@@ -1,10 +1,10 @@
 module GNBA (GNBA(..), empty, addState, addTransition, addFinalSet, addToInitialStates,
-            getNeighbours)
+            getNeighbours, getAlphabet)
 where
 
 
 import qualified          Data.Map.Strict as Map
-import Data.List (union)
+import Data.List (union, nub)
 import Data.Maybe
 import CommonTypes
 
@@ -49,6 +49,22 @@ getNeighbours :: (Ord s) =>
                  [(a, s)]
 getNeighbours auto s =
   fromMaybe [] ((delta auto) Map.!? s)
+
+
+-- | Input: A GNBA
+--   Output: A list with all the alphabet symbols
+--           that cause transitions.
+--   NOTE: This might not correspond to the entire list of characters
+--         in the alphat. It just returns the characters that cause transitions
+--         in this particular automaton
+getAlphabet :: (Ord s, Eq a) =>
+               GNBA s a ->
+               [a]
+getAlphabet auto =
+  Map.foldr (\x y -> y `union` (nub $ map fst x))
+            []
+            (delta auto)
+
 -- -----------------------------------------------------------------------------
 -- END: Getterns for the GNBA
 -- -----------------------------------------------------------------------------
