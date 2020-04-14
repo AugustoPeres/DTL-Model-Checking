@@ -283,7 +283,9 @@ canBeGlobalAutomatonTransition alpha clo acts props s1 s2 sigma =
       (zip departureSets props) &&
   --all (\q -> S.filter F.isPropSymbol (fst q) == propLetter) s1 &&
   -- If it is not an action of agent i then the states must remain unchanged --
-  all (\i -> s1!!(i - 1) == s2!!(i - 1)) sleppyAgents &&
+  all (\i -> S.filter F.isLocal (fst $ s1!!(i - 1)) ==
+             S.filter F.isLocal (fst $ s2!!(i - 1)))
+      sleppyAgents &&
   -- If it is an action of the agent then the rules for the local transition --
   -- function must hold --
   all (canBeLocalAutomatonTransition alpha clo s1 s2) activatedAgents &&
@@ -412,19 +414,7 @@ dotProduct dts auto =
         initialStatesN = N.inicialStates auto
         dtsWithInitialStates = foldr (\x y -> T.addToInitialStates y x)
                                      dtsWithactions
-                                     [(s, q) |s <- initialStatesT, q <- statesN,
-                                              any
-                                              (\x -> q `elem`
-                                                   (foldr (\y z -> N.getNeighboursGeneral
-                                                                   auto
-                                                                   [x]
-                                                                   (S.fromList $ T.getLabel dts s, y)
-                                                                   `union` z)
-                                                          []
-                                                          allActions
-                                                    )
-                                                )
-                                                initialStatesN]
+                                     [(s, q) |s <- initialStatesT, q <- initialStatesN]
         -- adding the propositional symbols --
         dtsWithLabels = foldr (\x y -> foldr (\ag y' -> T.addStateLabel y' x ag [snd x])
                                              y
@@ -432,7 +422,7 @@ dotProduct dts auto =
                               dtsWithInitialStates
                               newStates
         -- adding to the transition relation --
-        dtsWithTransitions = foldr (\x y -> T.addTransitionSafe y (fst $ fst x) (snd $ fst x) (snd x) )
+        dtsWithTransitions = foldr (\x y -> T.addTransition y (fst $ fst x) (snd $ fst x) (snd x))
                                    dtsWithLabels
                                    [((s, s'), a) | s <- newStates,
                                                    s' <- newStates,
@@ -442,7 +432,7 @@ dotProduct dts auto =
                                        `elem`
                                        (N.getNeighboursGeneral auto
                                                                [(snd s)]
-                                                               (S.fromList $ T.getLabel dts (fst s'), a)))
+                                                               (S.fromList $ T.getLabel dts (fst s), a)))
                                       &&
                                       (T.isTransitionOfSystem dts (fst s) (fst s') a)
 
@@ -530,8 +520,7 @@ tThesis = T.DTS {T.states = S.fromList [1, 2, 3, 4] :: S.Set Int,
                                       ((4, 2), S.fromList [])
                                       ],
         T.transitionRelation = M.fromList [
-                                          ((1, "a"), [2]),
-                                          ((1, "a"), [4]),
+                                          ((1, "a"), [2, 4]),
                                           ((1, "b"), [3]),
                                           ((2, "c"), [1]),
                                           ((3, "b"), [1]),
@@ -549,3 +538,27 @@ oneAgent1 = T.DTS {T.states = S.fromList [1, 2] :: S.Set Int,
                    T.transitionRelation = M.fromList[
                       ((1, "a"), [2]),
                       ((2, "a"), [1])]}
+
+-- A witness for @_1[p] => @_2[X(X p)]. This is achieved by removing the 4th
+-- state from tThesis and removing p from the second state.
+-- This test is failing for the formula @_1[p] => @_2[X(Xp)]
+tThesisNextNext = T.DTS {T.states = S.fromList [1, 2, 3] :: S.Set Int,
+        T.actions = M.fromList [(1::Int, S.fromList ["a", "b"]), (2, S.fromList ["a", "c"])],
+        T.initialStates = S.fromList [1],
+        T.propSymbols = M.fromList [
+            (1, S.fromList [F.FromLocal $ F.PropositionalSymbol "p"]),
+            (2, S.fromList [F.FromLocal $ F.PropositionalSymbol "q"])
+                    ],
+        T.labelingFunction = M.fromList [
+                                      ((1, 1), S.fromList [F.FromLocal $ F.PropositionalSymbol "p"]),
+                                      ((1, 2), S.fromList [F.FromLocal $ F.PropositionalSymbol "q"]),
+                                      ((2, 1), S.fromList []),
+                                      ((2, 2), S.fromList []),
+                                      ((3, 1), S.fromList []),
+                                      ((3, 2), S.fromList [F.FromLocal $ F.PropositionalSymbol "q"])
+                                      ],
+        T.transitionRelation = M.fromList [
+                                          ((1, "a"), [2]),
+                                          ((1, "b"), [3]),
+                                          ((2, "c"), [1]),
+                                          ((3, "b"), [1])]}

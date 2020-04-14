@@ -3,7 +3,7 @@ module DTS (DTS (..), getAllActions, getLabel, getAgents,
             addToInitialStates, addTransitionSafe, addActionAgent,
             getActionsAgent, isTransitionOfSystem, kosaraju,
             isReachableFromStates, deleteStates, deleteDeadStates,
-            getNeighbours, deleteWhileDeadStates, dfs)
+            getNeighbours, deleteWhileDeadStates, dfs, addTransition)
 where
 
 import Data.List ((\\), union)
