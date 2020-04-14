@@ -43,7 +43,7 @@ instance Show a => FiniteGraphRepresentable (NBA a) where
           d = delta a
           showTransitions k =
             unlines $ map
-                      (\x->show k ++ "->" ++ show(snd x) ++ "[label=" ++ show(fst x) ++ "];")
+                      (\x->show k ++ "->" ++ show(snd x) ++ "[label=\"" ++ show(fst x) ++ "\"];")
                       (fromMaybe [] (Map.lookup k d))
 
 

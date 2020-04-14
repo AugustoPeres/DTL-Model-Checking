@@ -279,9 +279,9 @@ canBeGlobalAutomatonTransition alpha clo acts props s1 s2 sigma =
   -- first we check that all the states have coherent proposisitonal symbols --
   -- Check to see if i can just reduce this to s simple filter
   -- and then a check if sigma == filter isLiteral state
-  -- all (\q -> (fst q) `S.intersection` (snd q) == propLetter `S.intersection` (snd q))
-  --    (zip departureSets literals) &&
-  all (\q -> S.filter F.isPropSymbol (fst q) == propLetter) s1 &&
+  all (\q -> (fst q) `S.intersection` (snd q) == propLetter `S.intersection` (snd q))
+      (zip departureSets props) &&
+  --all (\q -> S.filter F.isPropSymbol (fst q) == propLetter) s1 &&
   -- If it is not an action of agent i then the states must remain unchanged --
   all (\i -> s1!!(i - 1) == s2!!(i - 1)) sleppyAgents &&
   -- If it is an action of the agent then the rules for the local transition --

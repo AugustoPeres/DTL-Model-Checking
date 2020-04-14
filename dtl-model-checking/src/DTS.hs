@@ -3,7 +3,7 @@ module DTS (DTS (..), getAllActions, getLabel, getAgents,
             addToInitialStates, addTransitionSafe, addActionAgent,
             getActionsAgent, isTransitionOfSystem, kosaraju,
             isReachableFromStates, deleteStates, deleteDeadStates,
-            getNeighbours)
+            getNeighbours, deleteWhileDeadStates, dfs)
 where
 
 import Data.List ((\\), union)
@@ -210,6 +210,18 @@ deleteStates dts list =
 
 
 -- | Input: A DTS
+--   Output: A DTS from whcih all dead states are removed in succession
+--           until no more dead states are present in the system
+deleteWhileDeadStates :: (Ord a, Ord i, Ord s, Ord prop) =>
+                         DTS s i prop a ->
+                         DTS s i prop a
+deleteWhileDeadStates dts
+  | null deadStates = dts
+  | otherwise = deleteWhileDeadStates (deleteStates dts deadStates)
+  where deadStates = S.toList $ S.filter (null . getNeighbours dts) (states dts)
+
+
+-- | Input: A DTS
 --   Output: A DTS with all the states that have no outgoing arrows removed
 deleteDeadStates :: (Ord a, Ord i, Ord s, Ord prop) =>
                     DTS s i prop a ->
@@ -328,7 +340,7 @@ isReachableFromStates :: (Ord a, Ord i, Ord s, Ord prop) =>
                          s -> -- state we want to check
                          [s] -> -- list of possible departure states
                          Bool
-isReachableFromStates dts state list = any (\x -> state `elem` dfs dts [x] [] True) list
+isReachableFromStates dts state list = any (\x -> state `elem` dfs dts [x] [] False) list
 
 
 -- | Input: A DTS and a state.
