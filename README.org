@@ -7,6 +7,43 @@
 
 * Details on the implementation
 
+** Automata theoretic approach
+
+*** Optimizations that I might need to do
+
+**** TODO When converting GNBA -> NBA.
+   I believe this function would be much more efficient if I make a direction
+   construction of the transition function.
+   See the note in the comment of ~convertGNBAToNBA~ in the aoutomata theoretic module.
+
+**** TODO The same as the previous point but for the ~dotProduct~. 
+     It should be much more efficient if I make the construction of the
+     transition relation directly instead of filtering for all of the states in
+     the automaton and then adding to the system. 
+
+**** TODO Reducing the automatons and the transition system.
+     I should see what is the effect of reducing the transitions system and the
+     automatons before and computing strongly connected components.
+
+*** Things that could use improvement.
+
+**** The model Checking answer
+     I should create a data type for the model checking answer, that way I can
+     provide counter example. For example:
+
+     #+BEGIN_SRC haskell
+     data ModelCheckingResult a = Satisfies
+                                | CounterExample a
+                                deriving (Show, Eq, Ord)
+     #+END_SRC
+
+     This way I can provide an answer with a counter example in the cases where
+     it is not verified
+
+** BDD model checking 
+
+** Bounded model checking
+
 * Next steps
 
 ** KNOWCAUSE Cannot create Maps with ROBDDs 
@@ -14,7 +51,12 @@
    properly done and could use improvement. Not a major concern as I can simply
    use the labels which usually also derive order 
 
-** KNOWCAUSE the algorithm is returning always True.
+** FIXED fails for @_1[c_2(~q)] in the transition system were it should not fail. 
+   CLOSED: [2020-04-14 Tue 17:30]
+   Never mind. The formula should still fail
+
+** FIXED the algorithm is returning always True.
+   CLOSED: [2020-04-14 Tue 17:21]
    The automatons seem to be in working order. The problem must be, therefore on
    the ~dotProduct~ function or when passing to NBA.
 
@@ -38,11 +80,32 @@
    strongly connected components were in fact in a loop. Failure to verify this
    causes problems for components with one or more states. 
 
+   <2020-04-14 Tue> Found mistake. In the rules of the global transition
+   function I was forcing $\sigma = q \cap AP_i$ instead of $\sigma \cap AP_i =
+   q \cap AP_i$
+
+   <2020-04-14 Tue> Found mistake. On is reachable we need to start the dfs at
+   false. This eliminates states that don't have self loops.
+
+   <2020-04-14 Tue> Found Mistake. In my thesis. When it is not an action of
+   agent we can only require the local formulas to remain unchanged. After that
+   there can be changes to the global formulas even if the agent has not taken
+   any action.
+
+   <2020-04-14 Tue> Found Mistake. In my thesis(the part with the persistence).
+   Must change the definition on the report. Already change in code.
+
+   <2020-04-14 Tue> Found mistake. Could not add some of the transitions to the
+   dot product because I was using the function ~T.addTransitionSafe~. Changed
+   to ~addTransition~
+
+
 ** DONE Make the model checking algorithm at the top level
    CLOSED: [2020-04-13 Mon 18:57]
    This is, just complete the function using with kosaraju,
  
-** TODO Put the function to convert between NBAs and GNBAs in the AutomataTheoreticApproach module [2/2]
+** DONE Put the function to convert between NBAs and GNBAs in the AutomataTheoreticApproach module [2/2]
+   CLOSED: [2020-04-14 Tue 20:57]
    - [X] Make the function from scratch
    - [X] Test the function
      Seems to be working for the small examples tested.
@@ -119,10 +182,6 @@
 
 * Things I am not totally happy about 
 
-** When converting GNBA -> NBA.
-   I believe this function would be much more efficient if I make a direction
-   construction of the transition function.
-   See the note in the comment of ~convertGNBAToNBA~ in the aoutomata theoretic module.
 
 ** In the algorithm restrict
    I should have the option to return a bdd with something else other than ~Int~
@@ -130,8 +189,6 @@
    Possible fix. I could always change the labels of the binary decision
    diagrams to always be ~Int~. This would prevent me from having all that work
    with orders.
-
-** The ~dotProduct~ function is actually less efficient when independent from the DTS module.  
 
 ** When using ~Data.Set~ I have to jump back and forth using ~fromList~ and ~toList~
    Maybe I should change the implementation of the distributed transition
