@@ -30,7 +30,7 @@ tThesis = T.DTS {T.states = S.fromList [1, 2, 3, 4] :: S.Set Int,
                                           ((4, "a"), [2])]}
 
 
--- A witness for @_1[p] => @_2[X(X p)]. This is achieved by removing the 4th
+-- A witness for @_1[p] => @_2[X(X p)]. This is achieved by removing the 4th(WORNG!!)
 -- state from tThesis and removing p from the second state.
 -- NOTE: This still is not enough for the formula to hold. We need to remove the third state
 --       otherwise we will just stay in a 1-3-1-3-1-3-1-3 forever without witnessing
