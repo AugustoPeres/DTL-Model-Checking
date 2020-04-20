@@ -1,9 +1,0 @@
-import Criterion.Main (defaultMain)
-import Criterion
-import AutoBench (benchmarks)
-
-main :: IO ()
-main = defaultMain
-  [
-    bgroup "Tests for one agent" benchmarks
-  ]
