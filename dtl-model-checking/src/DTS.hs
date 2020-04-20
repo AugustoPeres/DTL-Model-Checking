@@ -3,7 +3,8 @@ module DTS (DTS (..), getAllActions, getLabel, getAgents,
             addToInitialStates, addTransitionSafe, addActionAgent,
             getActionsAgent, isTransitionOfSystem, kosaraju,
             isReachableFromStates, deleteStates, deleteDeadStates,
-            getNeighbours, deleteWhileDeadStates, dfs, addTransition)
+            getNeighbours, deleteWhileDeadStates, dfs, addTransition,
+            subTransitionSystem)
 where
 
 import Data.List ((\\), union)
@@ -42,15 +43,31 @@ data DTS s i prop a = DTS {
 -- END: Definition of destributed transition system
 -- -----------------------------------------------------------------------------
 
-instance (Show s, Show prop, Show a, Ord s) => FiniteGraphRepresentable (DTS s i prop a) where
+instance (Show s, Show prop, Show a, Ord s, Ord prop) => FiniteGraphRepresentable (DTS s i prop a) where
   toGraphviz system =
-    "Digraph {\n" ++
-    --foldr (\a b -> b ++ show a ++ " [label =" ++ (show $ getter a) ++ ",shape=box]") "" sts ++
+    "Digraph {\n node [shape = box]\n" ++
+    -- labeling the states  with the respective propositional symbols --
+    M.foldrWithKey (\k x y -> y ++ show x ++ " [label = \""
+                                ++ show k ++ ": " ++
+                                (show $ getLabel system k) ++ "\"];\n")
+                   ""
+                   stateMap
+   ++
+   -- making the transition relation a string --
+   M.foldrWithKey (\k x y -> y ++
+                          foldr (\x' y' -> y' ++
+                                              show (stateMap M.! fst k) ++ "->" ++
+                                              show (stateMap M.! x') ++
+                                              "[label = \"" ++ show (snd k) ++ "\"];\n")
+                                   ""
+                                   x)
+                  ""
+                  tr
+   ++
     "}"
     where sts = states system
-          l = labelingFunction system
-          -- getter s = fromJust $ (M.lookup s l)
-
+          tr = transitionRelation system
+          stateMap = M.fromList (zip (S.toList sts) [1..])
 
 -- | Input: A list of states
 --   Output: An empty transition system with only those states
@@ -182,6 +199,14 @@ addTransitionSafe dts departure arrival action =
   then addTransition dts departure arrival action
   else dts
 
+
+-- | Input: A transitions system and a set of states
+--   Output: A transition system with all the other states delete
+subTransitionSystem :: (Ord a, Ord i, Ord s, Ord prop) =>
+                       DTS s i prop a ->
+                       [s] ->
+                       DTS s i prop a
+subTransitionSystem dts list = deleteStates dts (S.toList (states dts) \\ list)
 
 -- Input: A DTS and a a list of states
 -- Output: A DTS with that state removed

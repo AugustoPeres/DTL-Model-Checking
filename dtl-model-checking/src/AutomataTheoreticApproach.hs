@@ -1,6 +1,6 @@
 {-# LANGUAGE FlexibleInstances    #-}
 {-# LANGUAGE TypeSynonymInstances #-}
-module AutomataTheoreticApproach (modelCheck)
+module AutomataTheoreticApproach (modelCheck, modelCheckWithCounterExamples)
   where
 
 import           CommonTypes
@@ -70,6 +70,47 @@ instance {-# OVERLAPPING #-} Show AlphabetSymbol where
 -- END: Here we instance show for our types, this makes debuging much easir
 -- -----------------------------------------------------------------------------
 
+
+-- | Input: A transition system, a DTL formula, an integer
+--   Output: A ModelCheckingAnswer [(T,[s])] Where this list contains tuples
+--           of transition systems with fairness conditons that correspond to
+--           the counter examples found.
+modelCheckWithCounterExamples :: Ord s =>
+                                T.DTS s Int F.Formula Action ->
+                                F.GlobalFormula ->
+                                Int ->
+                                ModelCheckingAnswer [(T.DTS (s , N.State) Int N.State Action,
+                                                     [(s, N.State)])
+                                                    ]
+modelCheckWithCounterExamples dts alpha n =
+  go reachableSCC Satisfies
+  where gComp = makeComplementaryGNBA alpha n actions props
+        actions = map (T.getActionsAgent dts) [1..n]
+        props = map (S.fromList . T.getPropSymbolsAgent dts) [1..n]
+        -- now we convert to a NBA --
+        nbaComp = convertGNBAToNBA gComp (G.getAlphabet gComp)
+        fs = N.finalStates nbaComp
+        -- now we make the dot product and then remove irrelevant states --
+        tDotnbaComp = T.deleteWhileDeadStates $ dotProduct dts nbaComp
+        initSts = S.toList $ T.initialStates tDotnbaComp
+        -- now the states that we are interested for the persistence --
+        persStates = S.filter (\x -> (head $ T.getLabel tDotnbaComp x) `elem` fs)
+                              (T.states tDotnbaComp)
+        -- strongly connected componets --
+        scc = T.kosaraju tDotnbaComp
+        -- strongly connected componets that can be reached --
+        reachableSCC = filter (\x -> any (\y -> T.isReachableFromStates tDotnbaComp y initSts &&
+                                                any (`elem` x) (T.getNeighbours tDotnbaComp y))
+                                         x)
+                              scc
+        -- the fuction go --
+        --go :: (Ord s) => [[(s, N.State)]] -> ModelCheckingAnswer [[s]] -> ModelCheckingAnswer [[s]]
+        go [] b = b
+        go (x:xs) acc = if any (\state -> S.member state persStates) x
+          then go xs (acc <>
+                      CounterExample [(T.subTransitionSystem tDotnbaComp x,
+                                      filter (`elem` persStates) x)])
+          else go xs acc
 
 
 -- | Input: A transition system, a DTL formula and an integer.
