@@ -4,16 +4,15 @@ module DTS (DTS (..), getAllActions, getLabel, getAgents,
             getActionsAgent, isTransitionOfSystem, kosaraju,
             isReachableFromStates, deleteStates, deleteDeadStates,
             getNeighbours, deleteWhileDeadStates, dfs, addTransition,
-            subTransitionSystem)
+            subTransitionSystem, generateDTSFromStdGen)
 where
 
-import System.Random
---import System.Random.Shuffle
 import Data.List ((\\), union, subsequences)
 import           CommonTypes
 import qualified Data.Map.Lazy as M
 import           Data.Maybe
 import qualified Data.Set      as S
+import Utils (bernoulli)
 -- -----------------------------------------------------------------------------
 -- BEGIN: Definition of destributed transition system
 -- -----------------------------------------------------------------------------
@@ -440,7 +439,9 @@ getAgents dts = M.keys (propSymbols dts)
 -- generate random transition systems
 
 -- | Input: A list of agents, propositional symbols for the agents
---          actions for the agents, an stdgen
+--          actions for the agents, an stdgen, and two float denoting a probability.
+--          The first probablity refer to the probability of a state being an initial
+--          state, while the other refers to the probablity of creating edges.
 --   Output: A transitions systems generated for that that StdGen
 --   Note: The number of states will always be 2^(number of propositional symbols)
 generateDTSFromStdGen :: (Ord prop, Ord a) =>
@@ -448,8 +449,10 @@ generateDTSFromStdGen :: (Ord prop, Ord a) =>
                          [[prop]] -> -- ^list with prop symbols of each agent
                          [[a]] -> -- ^ list with all the actions
                          StdGen ->
+                         Float ->
+                         Float ->
                          DTS Int Int prop a
-generateDTSFromStdGen n props actions stdgen =
+generateDTSFromStdGen n props actions stdgen p1 p2 =
   -- adding the transitions --
   foldr (\x y -> addTransitionSafe y (fst' x) (snd' x) (thr' x))
         -- adding the state labels --
@@ -474,7 +477,8 @@ generateDTSFromStdGen n props actions stdgen =
         acts = concat actions
         actmap = M.fromList [(i, S.fromList $ actions!!(i - 1)) | i <- agents]
         -- here we create the initial states --
-        init = map snd (filter fst (zip (randoms (stdgen)::[Bool]) sts))
+        -- we make sure that state number 1 is always an initial state --
+        init = map snd (filter fst (zip (bernoulli stdgen p1) sts)) `union` [1]
         -- here we create the labeling function --
         -- mapping the states to the possible label indexes --
         possiblePairsAgent i = [(i - 1, y) | y <- [0..((2^(length $ props!!(i - 1))) - 1)]]
@@ -490,9 +494,9 @@ generateDTSFromStdGen n props actions stdgen =
         -- here we create the transitions that should be added --
         -- we zipp with a list of booleans that determine of the
         -- trnasition will be added or not --
-        transits = zip (randoms (stdgen) :: [Bool]) [(s1, s2, act) | s1  <- sts,
-                                                                   s2  <- sts,
-                                                                   act <- acts]
+        transits = zip (bernoulli stdgen p2) [(s1, s2, act) | s1  <- sts,
+                                                             s2  <- sts,
+                                                             act <- acts]
         trnsToBeAdded = map snd (filter fst transits)
         thr' (_, _, b) = b
         snd' (_, b, _) = b

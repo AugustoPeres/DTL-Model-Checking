@@ -42,10 +42,10 @@ benchmarksTwoAgentsEasy =
           (nf (modelCheck tThesis (F.GImplies (F.Local 1 (F.PropositionalSymbol "p")) (F.Local 2 (F.Next (F.Next $ F.PropositionalSymbol "q"))))) 2)
   ]
 
-benchmarksTwoAgentsMedium =
+benchmarksTwoAgentsVeryHard =
   [
-    bench "Testing for alphaBenchmarkMedium1 and tThesis"
-          (nf (modelCheck tThesis alphaBenchmarkMedium1) 2)
+    bench "Testing for alphaBenchmarkVeryHard1 and tThesis"
+          (nf (modelCheck tThesis alphaBenchmarkVeryHard1) 2)
   ]
 
 tThesis = T.DTS {T.states = S.fromList [1, 2, 3, 4] :: S.Set Int,
@@ -123,6 +123,6 @@ tThesisComHolds = T.DTS {T.states = S.fromList [1, 2] :: S.Set Int,
                                           ((2, "b"), [1])]}
 
 -- some formulas used for bechmarking --
-f1BenchmarkMedium1 = F.Next (F.Globally (F.Implies (F.PropositionalSymbol "p") (F.Comunicates 2 (F.PropositionalSymbol "q"))))
-f2BenchmarkMedium1 = F.Implies (F.Next ( F.PropositionalSymbol "q")) (F.Implies (F.Next (F.PropositionalSymbol "q")) (F.PropositionalSymbol "q"))
-alphaBenchmarkMedium1 = F.GImplies (F.Local 1 f1BenchmarkMedium1) (F.Local 2 f2BenchmarkMedium1)
+f1BenchmarkVeryHard1 = F.Next (F.Globally (F.Implies (F.PropositionalSymbol "p") (F.Comunicates 2 (F.PropositionalSymbol "q"))))
+f2BenchmarkVeryHard1 = F.Implies (F.Next ( F.PropositionalSymbol "q")) (F.Implies (F.Next (F.PropositionalSymbol "q")) (F.PropositionalSymbol "q"))
+alphaBenchmarkVeryHard1 = F.GImplies (F.Local 1 f1BenchmarkMedium1) (F.Local 2 f2BenchmarkMedium1)

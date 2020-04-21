@@ -7,9 +7,67 @@
 
 * Details on the implementation
 
+** Testing and benchmarking 
+
+*** Benchmarking
+    To write proper benchmarks visit [[http://taylor.fausak.me/2014/03/04/haskeleton-a-haskell-project-skeleton/#setup][This website]].
+
 ** Automata theoretic approach
 
 *** Optimizations that I might need to do
+
+    The first benchmark obtained without any optimizations was the following
+    #+BEGIN_SRC shell
+    Benchmark dtl-model-checking-benchmark: RUNNING...
+    benchmarking Tests for one agent easy:/Benchmarking @_1 [X p] and transition system oneAgent1
+    time                 558.1 μs   (551.3 μs .. 566.3 μs)
+                        0.998 R²   (0.997 R² .. 0.999 R²)
+    mean                 562.5 μs   (557.5 μs .. 574.7 μs)
+    std dev              27.12 μs   (12.06 μs .. 52.55 μs)
+    variance introduced by outliers: 41% (moderately inflated)
+
+    benchmarking Tests for one agent easy:/Benchamarking @_1 [X p => ~p] and transtion system oneAgent
+    time                 241.3 μs   (224.3 μs .. 256.7 μs)
+                        0.979 R²   (0.975 R² .. 0.988 R²)
+    mean                 221.6 μs   (216.0 μs .. 230.1 μs)
+    std dev              21.51 μs   (16.32 μs .. 26.74 μs)
+    variance introduced by outliers: 77% (severely inflated)
+
+    benchmarking Tests for two agents easy:/Testing for @_1[X p], and the DTS in the thesis part of SAT
+    time                 1.372 s    (-6.598 s .. 8.464 s)
+                        0.197 R²   (0.004 R² .. 1.000 R²)
+    mean                 1.201 s    (485.7 ms .. 2.482 s)
+    std dev              1.244 s    (88.94 ms .. 1.564 s)
+    variance introduced by outliers: 75% (severely inflated)
+
+    benchmarking Tests for two agents easy:/Testing for @_1[c_2[~q]], and the transition system tThesis
+    time                 121.2 ms   (111.6 ms .. 131.0 ms)
+                        0.995 R²   (0.987 R² .. 0.999 R²)
+    mean                 129.0 ms   (126.1 ms .. 132.5 ms)
+    std dev              5.296 ms   (3.392 ms .. 8.048 ms)
+    variance introduced by outliers: 11% (moderately inflated)
+
+    benchmarking Tests for two agents easy:/Testing for @_1[p] => @_2[F q] and for transition system in thesis
+    time                 1.015 s    (807.3 ms .. 1.113 s)
+                        0.995 R²   (0.987 R² .. 1.000 R²)
+    mean                 1.038 s    (1.009 s .. 1.064 s)
+    std dev              31.53 ms   (22.10 ms .. 38.45 ms)
+    variance introduced by outliers: 19% (moderately inflated)
+
+    benchmarking Tests for two agents easy:/Testing for @_1[p] => @_2[X(X q)] and for transition system tThesis
+    time                 661.0 ms   (577.1 ms .. 747.9 ms)
+                        0.998 R²   (0.992 R² .. 1.000 R²)
+    mean                 638.0 ms   (621.7 ms .. 655.1 ms)
+    std dev              21.00 ms   (9.602 ms .. 26.64 ms)
+    variance introduced by outliers: 19% (moderately inflated)
+
+    benchmarking Tests for two agents medium:/Testing for alphaBenchmarkMedium1 and tThesis
+    Benchmark dtl-model-checking-benchmark: ERROR
+
+    --  While building package dtl-model-checking-0.1.0.0 using:
+        /Users/augusto/.stack/setup-exe-cache/x86_64-osx/Cabal-simple_mPHDZzAJ_2.4.0.1_ghc-8.6.5 --builddir=.stack-work/dist/x86_64-osx/Cabal-2.4.0.1 bench dtl-model-checking-benchmark
+      Process exited with code: ExitFailure 1
+    #+END_SRC
 
 **** TODO When converting GNBA -> NBA.
    I believe this function would be much more efficient if I make a direction
@@ -24,6 +82,11 @@
 **** TODO Reducing the automatons and the transition system.
      I should see what is the effect of reducing the transitions system and the
      automatons before and computing strongly connected components.
+
+**** Efficiency of visited is reachable
+     In the modules ~DTS.hs~ and ~NBA.hs~ when using the functions is reachable
+     i use dfs. This makes a traversal over all the transitions system. This
+     could be improved to stop when the arrival node is found.
 
 *** Things that could use improvement.
 
@@ -126,8 +189,9 @@
 
 ** TODO Document the boolean formulas package
 
-** TODO Transition systems module first steps [2/3]
-   - [ ] Instance graphviz to be able to see the transition systems
+** DONE Transition systems module first steps [3/3]
+   CLOSED: [2020-04-20 Mon 18:23]
+   - [X] Instance graphviz to be able to see the transition systems
      Not really that important and difficult to do because of the constructors
      I can ignore the constructors and just use show on everything. Then, in the
      module, ModelCheckingAppraoch.hs I instance the show properly for all the
