@@ -7,7 +7,9 @@ module DTS (DTS (..), getAllActions, getLabel, getAgents,
             subTransitionSystem)
 where
 
-import Data.List ((\\), union)
+import System.Random
+--import System.Random.Shuffle
+import Data.List ((\\), union, subsequences)
 import           CommonTypes
 import qualified Data.Map.Lazy as M
 import           Data.Maybe
@@ -102,7 +104,7 @@ addToInitialStates dts state =
 --   Output: A new dts with that local label added
 --   NOTE: this is not safe. Moreover a label for an existing state
 --         might be replaced
-addStateLabel :: (Ord s, Ord i, Ord prop) =>
+addStateLabel :: (Ord s , Ord i, Ord a, Ord prop) =>
                  DTS s i prop a ->
                  s ->
                  i ->
@@ -354,10 +356,12 @@ dfs :: (Ord a, Ord i, Ord s, Ord prop) =>
        [s]
 dfs dts [] v _ = v
 dfs dts (x:xs) v b
+  | length v == max = v -- stopage condition for graphs with high degree
   | b = dfs dts ([s | s <- neigs, s `notElem` (x:v)] ++ xs) newvisited True
   | otherwise = dfs dts ([s | s <- neigs, s `notElem` (x:v)]) v True
   where neigs = getNeighbours dts x
         newvisited = if x `elem` v then v else v ++ [x]
+        max = length $ S.toList (states dts)
 
 
 isReachableFromStates :: (Ord a, Ord i, Ord s, Ord prop) =>
@@ -427,6 +431,82 @@ getAgents :: (Ord i) =>
              DTS s i prop a ->
              [i]
 getAgents dts = M.keys (propSymbols dts)
+
+
+-- -----------------------------------------------------------------------------
+-- BEGIN: IO () Functions
+-- -----------------------------------------------------------------------------
+-- This contains IO fuctions used for example to read systems from input or to
+-- generate random transition systems
+
+-- | Input: A list of agents, propositional symbols for the agents
+--          actions for the agents, an stdgen
+--   Output: A transitions systems generated for that that StdGen
+--   Note: The number of states will always be 2^(number of propositional symbols)
+generateDTSFromStdGen :: (Ord prop, Ord a) =>
+                         Int -> -- ^ number of agents
+                         [[prop]] -> -- ^list with prop symbols of each agent
+                         [[a]] -> -- ^ list with all the actions
+                         StdGen ->
+                         DTS Int Int prop a
+generateDTSFromStdGen n props actions stdgen =
+  -- adding the transitions --
+  foldr (\x y -> addTransitionSafe y (fst' x) (snd' x) (thr' x))
+        -- adding the state labels --
+        (foldr (\x y -> addStateLabel y (fst' x) (snd' x) (thr' x))
+              -- adding the states and the initial states --
+              (foldr (\x y -> addToInitialStates y x)
+                     (DTS (S.fromList sts)
+                          actmap
+                          S.empty
+                          M.empty
+                          M.empty
+                          M.empty)
+                     init)
+              -- adding the states and the initial states --
+              labels)
+        -- adding the state labels --
+        trnsToBeAdded
+  -- adding the transition --
+  where sts  = [1..(2^nprops)]
+        agents = [1..n]
+        nprops = length $ concat props
+        acts = concat actions
+        actmap = M.fromList [(i, S.fromList $ actions!!(i - 1)) | i <- agents]
+        -- here we create the initial states --
+        init = map snd (filter fst (zip (randoms (stdgen)::[Bool]) sts))
+        -- here we create the labeling function --
+        -- mapping the states to the possible label indexes --
+        possiblePairsAgent i = [(i - 1, y) | y <- [0..((2^(length $ props!!(i - 1))) - 1)]]
+        allPairsAgents = map possiblePairsAgent agents
+        allcombinations = helper allPairsAgents [[]]
+        sm = M.fromList $ zip sts allcombinations
+        labels = M.foldrWithKey (\k x y -> y ++ foldr (\x' y' -> y' ++ [(k, fst x', p (fst $ snd x') (snd $ snd x'))])
+                                                      []
+                                                      (zip agents x))
+                                []
+                                sm
+        p i s = ((map subsequences props)!!(i))!!(s)
+        -- here we create the transitions that should be added --
+        -- we zipp with a list of booleans that determine of the
+        -- trnasition will be added or not --
+        transits = zip (randoms (stdgen) :: [Bool]) [(s1, s2, act) | s1  <- sts,
+                                                                   s2  <- sts,
+                                                                   act <- acts]
+        trnsToBeAdded = map snd (filter fst transits)
+        thr' (_, _, b) = b
+        snd' (_, b, _) = b
+        fst' (b, _, _) = b
+        helper [x] b = [b' ++ [x'] | b' <- b, x' <- x]
+        helper (x:xs) b = helper xs [b' ++ [x'] | b' <- b , x' <- x]
+
+
+-- -----------------------------------------------------------------------------
+-- END: IO () Functions
+-- -----------------------------------------------------------------------------
+
+
+
 -- Just some test instances --
 t = DTS {states = S.fromList [1, 2, 3, 4],
         actions = M.fromList [(1, S.fromList ["a", "b"]), (2, S.fromList ["a", "c"])],
