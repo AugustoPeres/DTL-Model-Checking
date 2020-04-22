@@ -7,12 +7,13 @@ module DTS (DTS (..), getAllActions, getLabel, getAgents,
             subTransitionSystem, generateDTSFromStdGen)
 where
 
-import Data.List ((\\), union, subsequences)
 import           CommonTypes
+import           Data.List     (subsequences, union, (\\))
 import qualified Data.Map.Lazy as M
 import           Data.Maybe
 import qualified Data.Set      as S
-import Utils (bernoulli)
+import           System.Random
+import           Utils         (bernoulli)
 -- -----------------------------------------------------------------------------
 -- BEGIN: Definition of destributed transition system
 -- -----------------------------------------------------------------------------
@@ -462,7 +463,7 @@ generateDTSFromStdGen n props actions stdgen p1 p2 =
                      (DTS (S.fromList sts)
                           actmap
                           S.empty
-                          M.empty
+                          (M.fromList $ zip agents (map (S.fromList) props))
                           M.empty
                           M.empty)
                      init)
@@ -501,7 +502,7 @@ generateDTSFromStdGen n props actions stdgen p1 p2 =
         thr' (_, _, b) = b
         snd' (_, b, _) = b
         fst' (b, _, _) = b
-        helper [x] b = [b' ++ [x'] | b' <- b, x' <- x]
+        helper [x] b    = [b' ++ [x'] | b' <- b, x' <- x]
         helper (x:xs) b = helper xs [b' ++ [x'] | b' <- b , x' <- x]
 
 

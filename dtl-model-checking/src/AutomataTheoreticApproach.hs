@@ -12,6 +12,7 @@ import qualified DTS           as T
 import qualified GNBA          as G
 import qualified Ielementary   as I
 import qualified NBA           as N
+import System.Random
 
 -- The data marker is just used to mark the states.
 -- Recall from the definition in the thesis that states
@@ -603,3 +604,15 @@ tThesisNextNext = T.DTS {T.states = S.fromList [1, 2, 3] :: S.Set Int,
                                           ((1, "b"), [3]),
                                           ((2, "c"), [1]),
                                           ((3, "b"), [1])]}
+
+
+t8States2Agenst1 = T.generateDTSFromStdGen 2
+                                           [
+                                             [F.FromLocal $ F.PropositionalSymbol "p1", F.FromLocal $ F.PropositionalSymbol "p2"],
+                                             [F.FromLocal $ F.PropositionalSymbol "q1"]
+                                           ]
+                                           [["a", "b"], ["a", "c"]]
+                                           (mkStdGen 1)
+                                           0.1
+                                           0.1
+fEasy1 = F.Local 1 (F.Next $ F.PropositionalSymbol "p1") -- can also be used with just one agent

@@ -69,6 +69,120 @@
       Process exited with code: ExitFailure 1
     #+END_SRC
 
+**** TODO: Make automatons smaller 
+     Do this using the new definition. To see what the new definition is just
+     refer to question in the email to Jaime using the definition of /maximal/ set.
+     
+     This optimization seems essential as the benchmarks did not even finish
+     running. It got stuck in transition systems with 16 states, which is still
+     very small for several our when running benchmarks.
+
+     #+BEGIN_SRC shell
+     dtl-model-checking> benchmarks
+     Running 1 benchmarks...
+     Benchmark dtl-model-checking-benchmark: RUNNING...
+     benchmarking for one agent easy:/Benchmarking @_1 [X p] and transition system oneAgent1
+     time                 660.8 μs   (621.1 μs .. 701.3 μs)
+                         0.930 R²   (0.856 R² .. 0.977 R²)
+     mean                 833.5 μs   (737.2 μs .. 1.027 ms)
+     std dev              453.8 μs   (291.2 μs .. 719.8 μs)
+     variance introduced by outliers: 99% (severely inflated)
+
+     benchmarking for one agent easy:/Benchamarking @_1 [X p => ~p] and transtion system oneAgent
+     time                 226.1 μs   (220.0 μs .. 232.4 μs)
+                         0.977 R²   (0.953 R² .. 0.991 R²)
+     mean                 254.7 μs   (240.0 μs .. 290.5 μs)
+     std dev              81.81 μs   (34.78 μs .. 141.3 μs)
+     variance introduced by outliers: 98% (severely inflated)
+
+     benchmarking for two agents easy:/Testing for @_1[X p], and the DTS in the thesis part of SAT
+     time                 182.8 ms   (169.2 ms .. 192.8 ms)
+                         0.997 R²   (0.989 R² .. 1.000 R²)
+     mean                 188.0 ms   (183.7 ms .. 195.1 ms)
+     std dev              7.857 ms   (2.107 ms .. 11.06 ms)
+     variance introduced by outliers: 14% (moderately inflated)
+
+     benchmarking for two agents easy:/Testing for @_1[c_2[~q]], and the transition system tThesis
+     time                 128.9 ms   (122.5 ms .. 146.3 ms)
+                         0.987 R²   (0.951 R² .. 1.000 R²)
+     mean                 133.3 ms   (129.4 ms .. 140.0 ms)
+     std dev              7.297 ms   (5.473 ms .. 9.728 ms)
+     variance introduced by outliers: 11% (moderately inflated)
+
+     benchmarking for two agents easy:/Testing for @_1[p] => @_2[F q] and for transition system in thesis
+     time                 1.184 s    (1.089 s .. 1.346 s)
+                         0.997 R²   (0.996 R² .. 1.000 R²)
+     mean                 1.106 s    (1.081 s .. 1.147 s)
+     std dev              38.26 ms   (3.020 ms .. 48.07 ms)
+     variance introduced by outliers: 19% (moderately inflated)
+
+     benchmarking for two agents easy:/Testing for @_1[p] => @_2[X(X q)] and for transition system tThesis
+     time                 670.9 ms   (601.9 ms .. NaN s)
+                         0.998 R²   (0.994 R² .. 1.000 R²)
+     mean                 680.8 ms   (666.4 ms .. 693.5 ms)
+     std dev              15.29 ms   (13.27 ms .. 17.09 ms)
+     variance introduced by outliers: 19% (moderately inflated)
+
+     benchmarking 8 states and easy formulas:/Testing for transition system t8StatesAgents1 and fEasy1
+     time                 20.78 s    (15.80 s .. 26.97 s)
+                         0.990 R²   (0.967 R² .. 1.000 R²)
+     mean                 18.26 s    (16.62 s .. 19.50 s)
+     std dev              1.811 s    (1.093 s .. 2.213 s)
+     variance introduced by outliers: 23% (moderately inflated)
+
+     benchmarking 8 states and easy formulas:/Testing for transition system t8StatesAgents2 and fEasy1
+     time                 15.05 s    (14.51 s .. 15.54 s)
+                         1.000 R²   (1.000 R² .. 1.000 R²)
+     mean                 15.14 s    (15.03 s .. 15.27 s)
+     std dev              128.5 ms   (101.2 ms .. 149.0 ms)
+     variance introduced by outliers: 19% (moderately inflated)
+
+     benchmarking 8 states and easy formulas:/Testing for transition system t8StatesAgents3 and fEasy1
+     time                 14.81 s    (NaN s .. 15.51 s)
+                         1.000 R²   (0.999 R² .. 1.000 R²)
+     mean                 15.02 s    (14.93 s .. 15.18 s)
+     std dev              156.6 ms   (46.09 ms .. 209.4 ms)
+     variance introduced by outliers: 19% (moderately inflated)
+
+     benchmarking 8 states and easy formulas:/Testing for transition system t8StatesAgents4 and fEasy1
+     time                 14.96 s    (14.40 s .. NaN s)
+                         1.000 R²   (NaN R² .. 1.000 R²)
+     mean                 15.00 s    (14.94 s .. 15.07 s)
+     std dev              83.76 ms   (43.23 ms .. 102.0 ms)
+     variance introduced by outliers: 19% (moderately inflated)
+
+     benchmarking 8 states and easy formulas:/Testing for transition system t8StatesAgents1 and fEasy2
+     time                 5.225 s    (4.983 s .. 5.547 s)
+                         0.999 R²   (0.999 R² .. 1.000 R²)
+     mean                 5.520 s    (5.373 s .. 5.759 s)
+     std dev              253.1 ms   (23.96 ms .. 316.2 ms)
+     variance introduced by outliers: 19% (moderately inflated)
+
+     benchmarking 8 states and easy formulas:/Testing for transition system t8StatesAgents2 and fEasy2
+     time                 5.399 s    (5.318 s .. 5.533 s)
+                         1.000 R²   (1.000 R² .. 1.000 R²)
+     mean                 5.379 s    (5.312 s .. 5.401 s)
+     std dev              47.77 ms   (10.67 ms .. 63.68 ms)
+     variance introduced by outliers: 19% (moderately inflated)
+
+     benchmarking 8 states and easy formulas:/Testing for transition system t8StatesAgents3 and fEasy2
+     time                 5.304 s    (5.080 s .. 5.498 s)
+                         1.000 R²   (1.000 R² .. 1.000 R²)
+     mean                 5.483 s    (5.412 s .. 5.596 s)
+     std dev              112.1 ms   (44.12 ms .. 154.2 ms)
+     variance introduced by outliers: 19% (moderately inflated)
+
+     benchmarking 8 states and easy formulas:/Testing for transition system t8StatesAgents4 and fEasy2
+     time                 5.473 s    (5.252 s .. 5.601 s)
+                         1.000 R²   (0.999 R² .. 1.000 R²)
+     mean                 5.427 s    (5.355 s .. 5.453 s)
+     std dev              49.07 ms   (806.3 μs .. 59.95 ms)
+     variance introduced by outliers: 19% (moderately inflated)
+
+     benchmarking 16 states and easy formulas:/Testing for transition system t16StatesAgents1 and fEasy1
+     ^C
+     #+END_SRC
+
 **** TODO When converting GNBA -> NBA.
    I believe this function would be much more efficient if I make a direction
    construction of the transition function.
@@ -82,6 +196,8 @@
 **** TODO Reducing the automatons and the transition system.
      I should see what is the effect of reducing the transitions system and the
      automatons before and computing strongly connected components.
+     The reduction of the automatons should include reducing the GNBA based on
+     the final sets.
 
 **** Efficiency of visited is reachable
      In the modules ~DTS.hs~ and ~NBA.hs~ when using the functions is reachable
@@ -90,7 +206,8 @@
 
 *** Things that could use improvement.
 
-**** The model Checking answer
+**** DONE The model Checking answer
+     CLOSED: [2020-04-22 Wed 00:29]
      I should create a data type for the model checking answer, that way I can
      provide counter example. For example:
 
