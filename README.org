@@ -75,7 +75,18 @@
      
      This optimization seems essential as the benchmarks did not even finish
      running. It got stuck in transition systems with 16 states, which is still
-     very small for several our when running benchmarks.
+     very small despite the fact that I left the program running for 6 hours.
+
+     This must be fixed as my goal is to be able to model check with state space
+     over 1000 states.
+
+     This should be an easy enough fix.
+     
+     1. Change the states of the automaton in order to allow just propositional
+        symbols that appear in the closure of the formula.
+     2. Change the ~dotProduct~ function to allow for transitions when the label
+        of the state is contains the Set responsible for the transition in the automaton. 
+     
 
      #+BEGIN_SRC shell
      dtl-model-checking> benchmarks
