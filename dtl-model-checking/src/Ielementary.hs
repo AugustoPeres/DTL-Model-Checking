@@ -32,15 +32,12 @@ type SOF = S.Set Formula
 --   Output: all the i-elementary sets for the agent
 iElementarySetsAgent :: SOF -> -- ^ the closure of a formula
                         Agent -> -- ^ the agent for which we make the computation
-                        SOF -> -- ^ the propositional symbols for the agent
                         GlobalFormula ->
                         [SOF]
-iElementarySetsAgent clo i props alpha =
+iElementarySetsAgent clo i alpha =
   -- this is probably not the most efficient way to do this
-  nub [downArrow set i alpha props | set <- S.toList $ S.powerSet (S.union clo lit),
+  nub [downArrow set i alpha | set <- S.toList $ S.powerSet clo,
                                      isIElementary set clo i ]
-  where lit = S.union props (S.map negateFormula props)
-
 
 -- | Input: A set of formulas, an angent, the global formula
 --          the set of propositinal symbols for the agent,
@@ -49,16 +46,15 @@ iElementarySetsAgent clo i props alpha =
 --          for the agent
 --   Output: A set of formulas with the formulas that are in
 --           the domain of the agent
+--   NOTE: Another possible optimizations would be to pass the subformulas
+--         for the agent instead of computing every time in the variable aux3 and aux2
 downArrow :: SOF ->
              Agent ->
              GlobalFormula ->
-             SOF -> -- the propositional symbols for the agent
              SOF
-downArrow set i alpha  props =
-  S.filter (\x -> x `S.member` aux0 || isGlobal x) set
-  where aux0 = S.union aux lits
-        lits = S.union props (S.map negateFormula props)
-        aux  = S.union aux2 aux3
+downArrow set i alpha =
+  S.filter (\x -> x `S.member` aux || isGlobal x) set
+  where aux  = S.union aux2 aux3
         aux2 = S.map negateFormula aux3
         aux3 = S.fromList $ subFormulasAgent alpha i
 

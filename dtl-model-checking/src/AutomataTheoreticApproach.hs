@@ -13,6 +13,8 @@ import qualified GNBA          as G
 import qualified Ielementary   as I
 import qualified NBA           as N
 import System.Random
+import Data.Maybe
+import ExampleInstances
 
 -- The data marker is just used to mark the states.
 -- Recall from the definition in the thesis that states
@@ -124,6 +126,9 @@ modelCheckWithCounterExamples dts alpha n =
 --         because that was how we defined the DTL formulas module
 --         Therefore that must be the language that is accepted by the automaton
 --         therefore the transition system must be of all of these types
+--   NOTE: We full simplify the transition system because we are not interested in
+--         model checking systems with finite paths. All states must be abbe to make
+--         transitions.
 modelCheck :: Ord s =>
               T.DTS s Int F.Formula Action ->
               F.GlobalFormula ->
@@ -132,7 +137,7 @@ modelCheck :: Ord s =>
 modelCheck dts alpha n =
   not $ any (\x -> any (\comp -> x `elem` comp &&
                                  any (\y -> y `elem` T.getNeighbours tDotnbaComp x) comp)
-                       reachableSCC)
+                       scc)
             persStates
   where gComp = makeComplementaryGNBA alpha n actions props
         actions = map (T.getActionsAgent dts) [1..n]
@@ -141,17 +146,14 @@ modelCheck dts alpha n =
         nbaComp = convertGNBAToNBA gComp (G.getAlphabet gComp)
         fs = N.finalStates nbaComp
         -- now we make the dot product and then remove irrelevant states --
-        tDotnbaComp = T.deleteDeadStates $ dotProduct dts nbaComp
-        initSts = S.toList $ T.initialStates tDotnbaComp
+        clo = F.closureFormula alpha n
+        tDotnbaComp = T.fullSimplify $
+                      dotProductParticullarCase (T.fullSimplify dts) nbaComp clo
         -- now the states that we are interested for the persistence --
         persStates = S.filter (\x -> (head $ T.getLabel tDotnbaComp x) `elem` fs)
                               (T.states tDotnbaComp)
         -- strongly connected componets --
         scc = T.kosaraju tDotnbaComp
-        -- strongly connected componets that can be reached --
-        reachableSCC = filter (\x -> any (\y -> T.isReachableFromStates tDotnbaComp y initSts)
-                                         x)
-                              scc
 
 
 
@@ -257,7 +259,7 @@ makeComplementaryGNBA alpha n acts props=
         -- third we add the transition
         finalSets
   -- finally we add the final sets
-  where statesGNBA = makeStatesGNBA alpha n clo props
+  where statesGNBA = makeStatesGNBA alpha n clo
         clo = F.closureFormula alpha n
         initialStates = filter canBeInitialState statesGNBA
         possibleTransitions = makeMaybeTransitions statesGNBA acts
@@ -309,6 +311,8 @@ makeMaybeTransitions states acts =
 --          with the propositional symbols for the agents, two states and
 --          a propositional letter
 --   Output: True if it is a transition in the local automaton
+--   NOTE: Possible optimization: use only the propositional symbols present in
+--         the closure of the formula instead of all the propositional symbols.
 canBeGlobalAutomatonTransition :: F.GlobalFormula ->
                                   I.SOF -> -- the closure
                                   [[Action]] -> -- actions of the agents
@@ -406,9 +410,8 @@ canBeInitialState state =
 makeStatesGNBA :: F.GlobalFormula -> -- the formula
                   Int -> -- the number of agents
                   I.SOF -> -- the closure
-                  [I.SOF] -> -- a list with the propositional symbols of each agent
                   [GNBAState]
-makeStatesGNBA alpha n clo props =
+makeStatesGNBA alpha n clo =
   foldr (\a b -> [b' ++ [a'] | a' <- a, b' <- b,
                                I.haveSameGlobalFormulas (fst a') (fst $ head b'),
                                (snd $ head b') == snd a'])
@@ -417,7 +420,7 @@ makeStatesGNBA alpha n clo props =
   where iElemSets = map (\x -> concatMap (\y -> if F.wrapGlobal alpha `S.member` y
                                                 then [(y, Upsilon), (y, None)]
                                                 else [(y, None)])
-                                         (I.iElementarySetsAgent clo x (props!!(x-1)) alpha)
+                                         (I.iElementarySetsAgent clo x alpha)
                         )
                         [1..n]
 -- -----------------------------------------------------------------------------
@@ -425,6 +428,60 @@ makeStatesGNBA alpha n clo props =
 -- -----------------------------------------------------------------------------
 
 
+
+
+-- | Input: A DTS and, automaton and the closure of a formula.
+--   Output: The product as defined in my thesis for the optimized automatons.
+--   NOTE: The returned transition has a different labeling function.
+--         This new transition system uses the state of the automaton
+--         in the label of the local states.
+--   NOTE: The states also change because they are the dot product.
+dotProductParticullarCase :: (Ord s , Ord i, Ord a) =>
+              T.DTS s i F.Formula a ->
+              N.NBA (S.Set F.Formula, a) ->
+              S.Set F.Formula ->
+              T.DTS (s, N.State) i N.State a
+dotProductParticullarCase dts auto clo =
+  -- adding actions --
+  --dtsWithInitialStates
+  dtsWithTransitions
+  where newStates = [(s, q) | s <- statesT, q <- statesN]
+        statesN = N.states auto
+        statesT = S.toList $ T.states dts
+        agents = T.getAgents dts
+        t1 = T.createFromStates newStates
+        -- adding actions --
+        dtsWithactions = foldr (\x y -> T.addActionAgent y (snd x) (fst x))
+                               t1
+                               (concatMap (\x -> zip (cycle [x]) (T.getActionsAgent dts x)) agents)
+        -- adding initial states --
+        allActions = T.getAllActions dts
+        initialStatesT = S.toList $ T.initialStates dts
+        initialStatesN = N.inicialStates auto
+        dtsWithInitialStates = foldr (\x y -> T.addToInitialStates y x)
+                                     dtsWithactions
+                                     [(s, q) |s <- initialStatesT, q <- initialStatesN]
+        -- adding the propositional symbols --
+        dtsWithLabels = foldr (\x y -> foldr (\ag y' -> T.addStateLabel y' x ag [snd x])
+                                             y
+                                             agents)
+                              dtsWithInitialStates
+                              newStates
+        -- adding to the transition relation -- 
+        props = S.filter F.isPropSymbol clo
+        dtsWithTransitions = foldr (\x y -> T.addTransition y (fst $ fst x) (snd $ fst x) (snd x))
+                                   dtsWithLabels
+                                   [((s, s'), a) | s <- newStates,
+                                                   s' <- newStates,
+                                                   a <- allActions,
+                                                   transitionIsPossible s s' a]
+        transitionIsPossible s s' a = (any (\x -> snd x == snd s' &&
+                                                 fst (fst x) == S.filter (`S.member` props) label &&
+                                                 snd (fst x) == a)
+                                          (fromMaybe [] (N.getNeighbours auto (snd s))))
+                                      &&
+                                      (T.isTransitionOfSystem dts (fst s) (fst s') a)
+                                      where label = S.fromList $ T.getLabel dts (fst s)
 
 
 -- | Input: A DTS and an automaton
@@ -438,8 +495,6 @@ dotProduct :: (Ord s , Ord i, Ord prop, Ord a) =>
               N.NBA (S.Set prop, a) ->
               T.DTS (s, N.State) i N.State a
 dotProduct dts auto =
-  -- adding actions --
-  --dtsWithInitialStates
   dtsWithTransitions
   where newStates = [(s, q) | s <- statesT, q <- statesN]
         statesN = N.states auto
@@ -470,16 +525,13 @@ dotProduct dts auto =
                                                    s' <- newStates,
                                                    a <- allActions,
                                                    transitionIsPossible s s' a]
-        transitionIsPossible s s' a = ((snd s')
+        transitionIsPossible s s' a =  ((snd s')
                                        `elem`
                                        (N.getNeighboursGeneral auto
                                                                [(snd s)]
                                                                (S.fromList $ T.getLabel dts (fst s), a)))
                                       &&
                                       (T.isTransitionOfSystem dts (fst s) (fst s') a)
-
-
-
 
 
 -- just some test instances --
@@ -509,110 +561,133 @@ g = N.NBA { N.states = [1, 2, 3],
         }
 
 -- some test formulas
-psiTeseLocal1 = F.Not ((F.Globally (F.PropositionalSymbol "p")))
-psiTeseLocal2 = F.Not (F.Next (F.PropositionalSymbol "q"))
-psiTeseGlobal = F.GImplies (F.Local 1 psiTeseLocal1) (F.Local 2 psiTeseLocal2)
-testPsiTestAutomaton = makeComplementaryGNBA psiTeseGlobal
-                                             2
-                                             [["a", "b"], ["a", "c"]]
-                                             [S.fromList [F.FromLocal $ F.PropositionalSymbol "p"],
-                                              S.fromList [F.FromLocal $F.PropositionalSymbol "q"]]
+-- psiTeseLocal1 = F.Not ((F.Globally (F.PropositionalSymbol "p")))
+-- psiTeseLocal2 = F.Not (F.Next (F.PropositionalSymbol "q"))
+-- psiTeseGlobal = F.GImplies (F.Local 1 psiTeseLocal1) (F.Local 2 psiTeseLocal2)
+-- testPsiTestAutomaton = makeComplementaryGNBA psiTeseGlobal
+--                                              2
+--                                              [["a", "b"], ["a", "c"]]
+--                                              [S.fromList [F.FromLocal $ F.PropositionalSymbol "p"],
+--                                               S.fromList [F.FromLocal $F.PropositionalSymbol "q"]]
 
 
--- smaller automatons for easy testing --
-psiSmall = F.Next (F.PropositionalSymbol "p")
-psiSmallGlobal = F.Local 1 psiSmall
-psiSmallAuto = makeComplementaryGNBA psiSmallGlobal 1 [["a"]] [S.fromList [F.FromLocal $ F.PropositionalSymbol "p"]]
+-- -- smaller automatons for easy testing --
+-- psiSmall = F.Next (F.PropositionalSymbol "p")
+-- psiSmallGlobal = F.Local 1 psiSmall
+-- psiSmallAuto = makeComplementaryGNBA psiSmallGlobal 1 [["a"]] [S.fromList [F.FromLocal $ F.PropositionalSymbol "p"]]
 
-psiSmall2 = F.Globally (F.PropositionalSymbol "p")
-psiSmallGlobal2 = F.Local 1 psiSmall2
-psiSmallAuto2 = makeComplementaryGNBA psiSmallGlobal2 1 [["a"]] [S.fromList [F.FromLocal $ F.PropositionalSymbol "p"]]
+-- psiSmall2 = F.Globally (F.PropositionalSymbol "p")
+-- psiSmallGlobal2 = F.Local 1 psiSmall2
+-- psiSmallAuto2 = makeComplementaryGNBA psiSmallGlobal2 1 [["a"]] [S.fromList [F.FromLocal $ F.PropositionalSymbol "p"]]
 
-psiSmall3 = F.Comunicates 2 (F.PropositionalSymbol "q")
-psiSmallGlobal3 = F.Local 1 psiSmall3
-psiSmallAuto3 = makeComplementaryGNBA psiSmallGlobal3 2 [["a", "b"], ["a", "c"]] [S.fromList [F.FromLocal $ F.PropositionalSymbol "p"], S.fromList [F.FromLocal $ F.PropositionalSymbol "q"]]
-
--- a test instance for the convertions of GNBAs to NBAs
-auto = G.GNBA {
-              G.states = [1, 2, 3, 4, 5]::[Int],
-              G.inicialStates = [1, 2],
-              G.finalSets = [[2, 3], [4]],
-              G.delta = M.fromList [(1, [("", 2)]),
-                                  (2, [("", 3)]),
-                                  (3, [("", 1)]),
-                                  (4, [("a", 5)]),
-                                  (5, [("a", 4)])]}
--- testing the dot product
-
-tThesis = T.DTS {T.states = S.fromList [1, 2, 3, 4] :: S.Set Int,
-        T.actions = M.fromList [(1::Int, S.fromList ["a", "b"]), (2, S.fromList ["a", "c"])],
-        T.initialStates = S.fromList [1, 4],
-        T.propSymbols = M.fromList [
-            (1, S.fromList [F.FromLocal $ F.PropositionalSymbol "p"]),
-            (2, S.fromList [F.FromLocal $ F.PropositionalSymbol "q"])
-                    ],
-        T.labelingFunction = M.fromList [
-                                      ((1, 1), S.fromList [F.FromLocal $ F.PropositionalSymbol "p"]),
-                                      ((1, 2), S.fromList [F.FromLocal $ F.PropositionalSymbol "q"]),
-                                      ((2, 1), S.fromList [F.FromLocal $ F.PropositionalSymbol "p"]),
-                                      ((2, 2), S.fromList []),
-                                      ((3, 1), S.fromList []),
-                                      ((3, 2), S.fromList [F.FromLocal $ F.PropositionalSymbol "q"]),
-                                      ((4, 1), S.fromList []),
-                                      ((4, 2), S.fromList [])
-                                      ],
-        T.transitionRelation = M.fromList [
-                                          ((1, "a"), [2, 4]),
-                                          ((1, "b"), [3]),
-                                          ((2, "c"), [1]),
-                                          ((3, "b"), [1]),
-                                          ((4, "a"), [2])]}
+-- psiSmall3 = F.Comunicates 1 (F.PropositionalSymbol "p")
+-- psiSmallGlobal3 = F.Local 2 psiSmall3
+-- psiSmallAuto3 = makeComplementaryGNBA psiSmallGlobal3 2 [["a", "b"], ["b"]] [S.fromList [F.FromLocal $ F.PropositionalSymbol "p"], S.fromList [F.FromLocal $ F.PropositionalSymbol "q"]]
 
 
-oneAgent1 = T.DTS {T.states = S.fromList [1, 2] :: S.Set Int,
-                   T.initialStates = S.fromList [1] :: S.Set Int,
-                   T.actions = M.fromList [(1::Int, S.fromList ["a"])],
-                   T.propSymbols = M.fromList [
-                      (1, S.fromList [F.FromLocal $ F.PropositionalSymbol "p"])],
-                   T.labelingFunction = M.fromList[
-                      ((1, 1), S.fromList [F.FromLocal $ F.PropositionalSymbol "p"]),
-                      ((2, 1), S.fromList [])],
-                   T.transitionRelation = M.fromList[
-                      ((1, "a"), [2]),
-                      ((2, "a"), [1])]}
+-- psiSmall4 = (F.Local 1 (F.Not(F.Globally(F.Not $ F.PropositionalSymbol "p"))))
+-- psiSmallAuto4 = makeComplementaryGNBA psiSmall4 1 [["a"]] [S.fromList [F.FromLocal $ F.PropositionalSymbol "p"]]
 
--- A witness for @_1[p] => @_2[X(X p)]. This is achieved by removing the 4th
--- state from tThesis and removing p from the second state.
--- This test is failing for the formula @_1[p] => @_2[X(Xp)]
-tThesisNextNext = T.DTS {T.states = S.fromList [1, 2, 3] :: S.Set Int,
-        T.actions = M.fromList [(1::Int, S.fromList ["a", "b"]), (2, S.fromList ["a", "c"])],
-        T.initialStates = S.fromList [1],
-        T.propSymbols = M.fromList [
-            (1, S.fromList [F.FromLocal $ F.PropositionalSymbol "p"]),
-            (2, S.fromList [F.FromLocal $ F.PropositionalSymbol "q"])
-                    ],
-        T.labelingFunction = M.fromList [
-                                      ((1, 1), S.fromList [F.FromLocal $ F.PropositionalSymbol "p"]),
-                                      ((1, 2), S.fromList [F.FromLocal $ F.PropositionalSymbol "q"]),
-                                      ((2, 1), S.fromList []),
-                                      ((2, 2), S.fromList []),
-                                      ((3, 1), S.fromList []),
-                                      ((3, 2), S.fromList [F.FromLocal $ F.PropositionalSymbol "q"])
-                                      ],
-        T.transitionRelation = M.fromList [
-                                          ((1, "a"), [2]),
-                                          ((1, "b"), [3]),
-                                          ((2, "c"), [1]),
-                                          ((3, "b"), [1])]}
+-- -- A witness for "@_2[]c_1(p)"
+-- tThesisComHolds = T.DTS {T.states = S.fromList [1, 2] :: S.Set Int,
+--         T.actions = M.fromList [(1::Int, S.fromList ["a", "b"]), (2, S.fromList ["b"])],
+--         T.initialStates = S.fromList [1],
+--         T.propSymbols = M.fromList [
+--             (1, S.fromList [F.FromLocal $ F.PropositionalSymbol "p"]),
+--             (2, S.fromList [F.FromLocal $ F.PropositionalSymbol "q"])
+--                     ],
+--         T.labelingFunction = M.fromList [
+--                                       ((1, 1), S.fromList [F.FromLocal $ F.PropositionalSymbol "p"]),
+--                                       ((1, 2), S.fromList [F.FromLocal $ F.PropositionalSymbol "q"]),
+--                                       ((2, 1), S.fromList []),
+--                                       ((2, 2), S.fromList [])
+--                                       ],
+--         T.transitionRelation = M.fromList [
+--                                           ((1, "a"), [2]),
+--                                           ((2, "b"), [1])]}
 
 
-t8States2Agenst1 = T.generateDTSFromStdGen 2
-                                           [
-                                             [F.FromLocal $ F.PropositionalSymbol "p1", F.FromLocal $ F.PropositionalSymbol "p2"],
-                                             [F.FromLocal $ F.PropositionalSymbol "q1"]
-                                           ]
-                                           [["a", "b"], ["a", "c"]]
-                                           (mkStdGen 1)
-                                           0.1
-                                           0.1
-fEasy1 = F.Local 1 (F.Next $ F.PropositionalSymbol "p1") -- can also be used with just one agent
+-- -- a test instance for the convertions of GNBAs to NBAs
+-- auto = G.GNBA {
+--               G.states = [1, 2, 3, 4, 5]::[Int],
+--               G.inicialStates = [1, 2],
+--               G.finalSets = [[2, 3], [4]],
+--               G.delta = M.fromList [(1, [("", 2)]),
+--                                   (2, [("", 3)]),
+--                                   (3, [("", 1)]),
+--                                   (4, [("a", 5)]),
+--                                   (5, [("a", 4)])]}
+-- -- testing the dot product
+
+-- tThesis = T.DTS {T.states = S.fromList [1, 2, 3, 4] :: S.Set Int,
+--         T.actions = M.fromList [(1::Int, S.fromList ["a", "b"]), (2, S.fromList ["a", "c"])],
+--         T.initialStates = S.fromList [1, 4],
+--         T.propSymbols = M.fromList [
+--             (1, S.fromList [F.FromLocal $ F.PropositionalSymbol "p"]),
+--             (2, S.fromList [F.FromLocal $ F.PropositionalSymbol "q"])
+--                     ],
+--         T.labelingFunction = M.fromList [
+--                                       ((1, 1), S.fromList [F.FromLocal $ F.PropositionalSymbol "p"]),
+--                                       ((1, 2), S.fromList [F.FromLocal $ F.PropositionalSymbol "q"]),
+--                                       ((2, 1), S.fromList [F.FromLocal $ F.PropositionalSymbol "p"]),
+--                                       ((2, 2), S.fromList []),
+--                                       ((3, 1), S.fromList []),
+--                                       ((3, 2), S.fromList [F.FromLocal $ F.PropositionalSymbol "q"]),
+--                                       ((4, 1), S.fromList []),
+--                                       ((4, 2), S.fromList [])
+--                                       ],
+--         T.transitionRelation = M.fromList [
+--                                           ((1, "a"), [2, 4]),
+--                                           ((1, "b"), [3]),
+--                                           ((2, "c"), [1]),
+--                                           ((3, "b"), [1]),
+--                                           ((4, "a"), [2])]}
+
+
+-- oneAgent1 = T.DTS {T.states = S.fromList [1, 2] :: S.Set Int,
+--                    T.initialStates = S.fromList [1] :: S.Set Int,
+--                    T.actions = M.fromList [(1::Int, S.fromList ["a"])],
+--                    T.propSymbols = M.fromList [
+--                       (1, S.fromList [F.FromLocal $ F.PropositionalSymbol "p"])],
+--                    T.labelingFunction = M.fromList[
+--                       ((1, 1), S.fromList [F.FromLocal $ F.PropositionalSymbol "p"]),
+--                       ((2, 1), S.fromList [])],
+--                    T.transitionRelation = M.fromList[
+--                       ((1, "a"), [2]),
+--                       ((2, "a"), [1])]}
+
+-- -- A witness for @_1[p] => @_2[X(X p)]. This is achieved by removing the 4th
+-- -- state from tThesis and removing p from the second state.
+-- -- This test is failing for the formula @_1[p] => @_2[X(Xp)]
+-- tThesisNextNext = T.DTS {T.states = S.fromList [1, 2, 3] :: S.Set Int,
+--         T.actions = M.fromList [(1::Int, S.fromList ["a", "b"]), (2, S.fromList ["a", "c"])],
+--         T.initialStates = S.fromList [1],
+--         T.propSymbols = M.fromList [
+--             (1, S.fromList [F.FromLocal $ F.PropositionalSymbol "p"]),
+--             (2, S.fromList [F.FromLocal $ F.PropositionalSymbol "q"])
+--                     ],
+--         T.labelingFunction = M.fromList [
+--                                       ((1, 1), S.fromList [F.FromLocal $ F.PropositionalSymbol "p"]),
+--                                       ((1, 2), S.fromList [F.FromLocal $ F.PropositionalSymbol "q"]),
+--                                       ((2, 1), S.fromList []),
+--                                       ((2, 2), S.fromList []),
+--                                       ((3, 1), S.fromList []),
+--                                       ((3, 2), S.fromList [F.FromLocal $ F.PropositionalSymbol "q"])
+--                                       ],
+--         T.transitionRelation = M.fromList [
+--                                           ((1, "a"), [2]),
+--                                           ((1, "b"), [3]),
+--                                           ((2, "c"), [1]),
+--                                           ((3, "b"), [1])]}
+
+
+-- t8States2Agenst1 = T.generateDTSFromStdGen 2
+--                                            [
+--                                              [F.FromLocal $ F.PropositionalSymbol "p1", F.FromLocal $ F.PropositionalSymbol "p2"],
+--                                              [F.FromLocal $ F.PropositionalSymbol "q1"]
+--                                            ]
+--                                            [["a", "b"], ["a", "c"]]
+--                                            (mkStdGen 1)
+--                                            0.1
+--                                            0.1
+-- fEasy1 = F.Local 1 (F.Next $ F.PropositionalSymbol "p1") -- can also be used with just one agent

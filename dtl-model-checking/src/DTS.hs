@@ -4,7 +4,8 @@ module DTS (DTS (..), getAllActions, getLabel, getAgents,
             getActionsAgent, isTransitionOfSystem, kosaraju,
             isReachableFromStates, deleteStates, deleteDeadStates,
             getNeighbours, deleteWhileDeadStates, dfs, addTransition,
-            subTransitionSystem, generateDTSFromStdGen)
+            subTransitionSystem, generateDTSFromStdGen, addState,
+            fullSimplify, deleteUnreachableStates)
 where
 
 import           CommonTypes
@@ -225,7 +226,7 @@ deleteStates dts list =
       (foldr (\x y -> if fst x `S.member` rmsets then M.delete x y else y) l keysLb)
       -- now we delete from the transition function , this is more complicated
       -- because we must also delete arrows going to those states --
-      (M.foldrWithKey (\k x y -> if fst k `S.member` rmsets
+      (M.foldrWithKey (\k _ y -> if fst k `S.member` rmsets
                                         then M.delete k y
                                         else M.adjust (\\ list) k y)
                              tr
@@ -234,6 +235,45 @@ deleteStates dts list =
         l      = labelingFunction dts
         keysLb = M.keys l
         tr = transitionRelation dts
+
+
+-- | Input: A DTS
+--   Output: A DTS resulting from successively removing dead states
+--   after removing states that can't be reached from initial states
+fullSimplify :: (Ord a, Ord i, Ord s, Ord prop) =>
+                DTS s i prop a ->
+                DTS s i prop a
+fullSimplify dts
+  | null unreachStates && null deadStates = dts
+  | null deadStates    = fullSimplify $
+                         deleteWhileDeadStates (deleteStates dts unreachStates)
+  | null unreachStates = fullSimplify $
+                         deleteUnreachableStates (deleteStates dts deadStates)
+  | otherwise = fullSimplify $ (deleteWhileDeadStates $ deleteUnreachableStates dts)
+  where unreachStates = S.toList $
+                        S.filter (\x -> not $ isReachableFromStates dts x ists) sts
+                        S.\\
+                        initialStates dts
+        deadStates    = S.toList $
+                        S.filter (null . getNeighbours dts) sts
+        sts           = states dts
+        ists          = S.toList $ initialStates dts
+
+-- | Input: A DTS
+--   Output: A DTS with all states that cannot be reached
+--           from an initial state removed
+deleteUnreachableStates :: (Ord a, Ord i, Ord s, Ord prop) =>
+                           DTS s i prop a ->
+                           DTS s i prop a
+deleteUnreachableStates dts =
+  deleteStates dts unreachableStates
+  where unreachableStates = S.toList $
+                            S.filter (\x -> not $ isReachableFromStates dts x ists') sts
+                            S.\\
+                            ists
+        sts   = states dts
+        ists  = initialStates dts
+        ists' = S.toList $ ists
 
 
 -- | Input: A DTS
