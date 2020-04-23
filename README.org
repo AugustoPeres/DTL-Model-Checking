@@ -69,7 +69,14 @@
       Process exited with code: ExitFailure 1
     #+END_SRC
 
-**** TODO: Make automatons smaller 
+**** Make automatons smaller [2/4]
+     - [X] Make the states as in the solution proposal.
+     - [X] Change the function ~dorProduct~.
+     - [ ] Remove the propositional symbols input from the automatons
+       We need only the propositional symbols present in the formula therefore
+       it is stupid to use pass all the propositional symbols to the automaton.
+     - [ ] Do the same for the function that gives the counter examples.
+
      Do this using the new definition. To see what the new definition is just
      refer to question in the email to Jaime using the definition of /maximal/ set.
      
@@ -77,16 +84,7 @@
      running. It got stuck in transition systems with 16 states, which is still
      very small despite the fact that I left the program running for 6 hours.
 
-     This must be fixed as my goal is to be able to model check with state space
-     over 1000 states.
-
-     This should be an easy enough fix.
-     
-     1. Change the states of the automaton in order to allow just propositional
-        symbols that appear in the closure of the formula.
-     2. Change the ~dotProduct~ function to allow for transitions when the label
-        of the state is contains the Set responsible for the transition in the automaton. 
-     
+     This were the benchmarks before the optimization.
 
      #+BEGIN_SRC shell
      dtl-model-checking> benchmarks
@@ -194,12 +192,17 @@
      ^C
      #+END_SRC
 
-**** TODO In the function ~downArrow~ see the optimization note 
+     This must be fixed as my goal is to be able to model check with state space
+     over 1000 states.
 
-**** TODO It doesn't make sense anymore passing all propositional symbols to the automaton. 
-     In fact we should not need to pass any propositional symbols as all
-     propositional symbols that the automatons needs are present in the closure
-     of the formula.
+     This should be an easy enough fix.
+     
+     1. Change the states of the automaton in order to allow just propositional
+        symbols that appear in the closure of the formula.
+     2. Change the ~dotProduct~ function to allow for transitions when the label
+        of the state is contains the Set responsible for the transition in the automaton. 
+     
+**** TODO In the function ~downArrow~ see the optimization note 
 
 **** TODO When converting GNBA -> NBA.
    I believe this function would be much more efficient if I make a direction
