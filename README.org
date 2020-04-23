@@ -194,6 +194,13 @@
      ^C
      #+END_SRC
 
+**** TODO In the function ~downArrow~ see the optimization note 
+
+**** TODO It doesn't make sense anymore passing all propositional symbols to the automaton. 
+     In fact we should not need to pass any propositional symbols as all
+     propositional symbols that the automatons needs are present in the closure
+     of the formula.
+
 **** TODO When converting GNBA -> NBA.
    I believe this function would be much more efficient if I make a direction
    construction of the transition function.
