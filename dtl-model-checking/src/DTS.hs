@@ -5,7 +5,8 @@ module DTS (DTS (..), getAllActions, getLabel, getAgents,
             isReachableFromStates, deleteStates, deleteDeadStates,
             getNeighbours, deleteWhileDeadStates, dfs, addTransition,
             subTransitionSystem, generateDTSFromStdGen, addState,
-            fullSimplify, deleteUnreachableStates)
+            fullSimplify, deleteUnreachableStates, shortestPath,
+            shortestPathFromInitialState)
 where
 
 import           CommonTypes
@@ -383,6 +384,53 @@ transpose dts =
                          (transitionRelation dts)}
 
 
+-- | Input: A DTS and a node
+--   Output: Maybe the shortest path from any
+--           initial state to that node
+--   NOTE: If the state is an initial state we just return it.
+shortestPathFromInitialState :: (Ord a, Ord i, Ord s, Ord prop) =>
+                                DTS s i prop a ->
+                                s ->
+                                Maybe [s]
+shortestPathFromInitialState dts s
+  | s `S.member` inits = Just [s]
+  | otherwise =
+    if null paths
+      then Nothing
+      else helper (head $ paths) (tail paths)
+  where paths    = filter isJust
+                          (map (\x -> shortestPath dts x s)
+                              (S.toList $ inits))
+        inits = initialStates dts
+        helper v [] = v
+        helper v (x:xs)
+          | fmap length v > fmap length x = helper x xs
+          | otherwise = helper v xs
+
+
+-- | Input: A DTS, Two nodes
+--   Output: The shortest path from node 1 to node 2
+--           represented as a list of nodes
+shortestPath :: (Ord a, Ord i, Ord s, Ord prop) =>
+                DTS s i prop a ->
+                s ->
+                s ->
+                Maybe [s]
+shortestPath dts s1 s2 =
+  go [] [[s1]]
+  where go _ [] = Nothing -- this is the case were we find no path
+        go v (x:xs)
+          | null nextNodes = go (currNode:v) xs
+          | any (==s2) nextNodes = Just $ x ++ [s2]
+          | otherwise = go (currNode:v)
+                           (foldr (\x' y -> if (x' `notElem` v) && (not $ any (x'`elem`) xs)
+                                    then y ++ [x++[x']]
+                                    else y)
+                                    xs
+                                  nextNodes)
+          where nextNodes = getNeighbours dts currNode -- raises error on empty
+                currNode = last x
+
 -- | Input: A DTS, a Q and, list of visited states and a boolean value
 --   Output: A list with all the states that can be visited
 --           from all the states in the Q over the transition system given
@@ -394,7 +442,7 @@ dfs :: (Ord a, Ord i, Ord s, Ord prop) =>
        [s] -> -- the returned list of visited states
        Bool ->
        [s]
-dfs dts [] v _ = v
+dfs _ [] v _ = v
 dfs dts (x:xs) v b
   | length v == max = v -- stopage condition for graphs with high degree
   | b = dfs dts ([s | s <- neigs, s `notElem` (x:v)] ++ xs) newvisited True

@@ -12,7 +12,7 @@ import qualified DTS           as T
 import qualified GNBA          as G
 import qualified Ielementary   as I
 import qualified NBA           as N
-import System.Random
+--import System.Random
 import Data.Maybe
 import ExampleInstances
 
@@ -78,6 +78,9 @@ instance {-# OVERLAPPING #-} Show AlphabetSymbol where
 --   Output: A ModelCheckingAnswer [(T,[s])] Where this list contains tuples
 --           of transition systems with fairness conditons that correspond to
 --           the counter examples found.
+--   NOTE: We full simplify the automatons as we are not interested in
+--         checking anything with finite paths and removing unreachable
+--         states does not cause the problem to change
 modelCheckWithCounterExamples :: Ord s =>
                                 T.DTS s Int F.Formula Action ->
                                 F.GlobalFormula ->
@@ -86,24 +89,23 @@ modelCheckWithCounterExamples :: Ord s =>
                                                      [(s, N.State)])
                                                     ]
 modelCheckWithCounterExamples dts alpha n =
-  go reachableSCC Satisfies
-  where gComp = makeComplementaryGNBA alpha n actions props
+  go relevant Satisfies
+  where gComp = makeComplementaryGNBA alpha n actions
         actions = map (T.getActionsAgent dts) [1..n]
-        props = map (S.fromList . T.getPropSymbolsAgent dts) [1..n]
+        dts' = T.fullSimplify dts
         -- now we convert to a NBA --
         nbaComp = convertGNBAToNBA gComp (G.getAlphabet gComp)
         fs = N.finalStates nbaComp
         -- now we make the dot product and then remove irrelevant states --
-        tDotnbaComp = T.deleteWhileDeadStates $ dotProduct dts nbaComp
-        initSts = S.toList $ T.initialStates tDotnbaComp
+        clo = F.closureFormula alpha n
+        tDotnbaComp = T.fullSimplify $ dotProductParticullarCase dts' nbaComp clo
         -- now the states that we are interested for the persistence --
         persStates = S.filter (\x -> (head $ T.getLabel tDotnbaComp x) `elem` fs)
                               (T.states tDotnbaComp)
         -- strongly connected componets --
         scc = T.kosaraju tDotnbaComp
         -- strongly connected componets that can be reached --
-        reachableSCC = filter (\x -> any (\y -> T.isReachableFromStates tDotnbaComp y initSts &&
-                                                any (`elem` x) (T.getNeighbours tDotnbaComp y))
+        relevant = filter (\x -> any (\y -> any (`elem` x) (T.getNeighbours tDotnbaComp y))
                                          x)
                               scc
         -- the fuction go --
@@ -139,9 +141,8 @@ modelCheck dts alpha n =
                                  any (\y -> y `elem` T.getNeighbours tDotnbaComp x) comp)
                        scc)
             persStates
-  where gComp = makeComplementaryGNBA alpha n actions props
+  where gComp = makeComplementaryGNBA alpha n actions
         actions = map (T.getActionsAgent dts) [1..n]
-        props = map (S.fromList . T.getPropSymbolsAgent dts) [1..n]
         -- now we convert to a NBA --
         nbaComp = convertGNBAToNBA gComp (G.getAlphabet gComp)
         fs = N.finalStates nbaComp
@@ -230,8 +231,7 @@ convertGNBAToNBA g alphabet =
 -- BEGIN: Making the automaton for the complementary language
 -- -----------------------------------------------------------------------------
 
--- | Input: A Formula, number of agents, a list of action, a list
---          with all propositional symbols for the agents
+-- | Input: A Formula, number of agents, the list of actions available to the agent
 --   Output: An GNBA that accepts the complementary language
 --   NOTE: We assume that the agents start in 1..n. Must always
 --         account for this when accessing states in the automaton.
@@ -240,9 +240,8 @@ convertGNBAToNBA g alphabet =
 makeComplementaryGNBA :: F.GlobalFormula ->
                          Int ->          -- number of agents
                          [[Action]] ->        -- list with the actions
-                         [I.SOF] -> -- propositional symbols for each agent
                          G.GNBA GNBAState AlphabetSymbol
-makeComplementaryGNBA alpha n acts props=
+makeComplementaryGNBA alpha n acts =
   -- finally we add the final sets
   foldr (\a b -> G.addFinalSet b a)
         -- third we add the transitions --
@@ -260,6 +259,7 @@ makeComplementaryGNBA alpha n acts props=
         finalSets
   -- finally we add the final sets
   where statesGNBA = makeStatesGNBA alpha n clo
+        props = map ((S.filter F.isPropSymbol) . S.fromList . (F.subFormulasAgent alpha)) [1..n]
         clo = F.closureFormula alpha n
         initialStates = filter canBeInitialState statesGNBA
         possibleTransitions = makeMaybeTransitions statesGNBA acts
@@ -322,7 +322,7 @@ canBeGlobalAutomatonTransition :: F.GlobalFormula ->
                                   AlphabetSymbol -> -- letter responsible for the transition
                                   Bool
 canBeGlobalAutomatonTransition alpha clo acts props s1 s2 sigma =
-  -- first we check that all the states have coherent proposisitonal symbols --
+  -- first we check that all the states have coherent propositonal symbols --
   -- Check to see if i can just reduce this to s simple filter
   -- and then a check if sigma == filter isLiteral state
   all (\q -> (fst q) `S.intersection` (snd q) == propLetter `S.intersection` (snd q))
@@ -535,30 +535,30 @@ dotProduct dts auto =
 
 
 -- just some test instances --
-t = T.DTS {T.states = S.fromList [1, 2, 3, 4],
-         T.actions = M.fromList [(1, S.fromList ["a", "b"]), (2, S.fromList ["a", "c"])],
-         T.initialStates = S.fromList [1, 4],
-        T.propSymbols = M.fromList [
-            (1, S.fromList ["p1", "q1"]),
-            (2, S.fromList ["p2", "q2'"])
-                    ],
-        T.labelingFunction = M.fromList [
-                                      ((1, 1), S.fromList ["p"]),
-                                      ((1, 2), S.fromList ["q"]),
-                                      ((2, 1), S.fromList ["p"]),
-                                      ((2, 2), S.fromList []),
-                                      ((3, 1), S.fromList []),
-                                      ((3, 2), S.fromList ["q"]),
-                                      ((4, 1), S.fromList []),
-                                      ((4, 2), S.fromList [])
-                                      ],
-        T.transitionRelation = M.fromList [((3, "a"), [4]), ((4, "a"), [1])]}
+-- t = T.DTS {T.states = S.fromList [1, 2, 3, 4],
+--          T.actions = M.fromList [(1, S.fromList ["a", "b"]), (2, S.fromList ["a", "c"])],
+--          T.initialStates = S.fromList [1, 4],
+--         T.propSymbols = M.fromList [
+--             (1, S.fromList ["p1", "q1"]),
+--             (2, S.fromList ["p2", "q2'"])
+--                     ],
+--         T.labelingFunction = M.fromList [
+--                                       ((1, 1), S.fromList ["p"]),
+--                                       ((1, 2), S.fromList ["q"]),
+--                                       ((2, 1), S.fromList ["p"]),
+--                                       ((2, 2), S.fromList []),
+--                                       ((3, 1), S.fromList []),
+--                                       ((3, 2), S.fromList ["q"]),
+--                                       ((4, 1), S.fromList []),
+--                                       ((4, 2), S.fromList [])
+--                                       ],
+--         T.transitionRelation = M.fromList [((3, "a"), [4]), ((4, "a"), [1])]}
 
-g = N.NBA { N.states = [1, 2, 3],
-            N.finalStates = [1],
-            N.inicialStates = [1, 2],
-            N.delta = M.fromList [(1, [((S.fromList ["p"],"a"), 1), ((S.fromList ["q"],"b"), 2), ((S.fromList ["p"], "a"), 3)]) , (2, [((S.fromList ["p", "q"], "c"),3), ((S.fromList ["p", "q"],"a"), 1), ((S.fromList [],"a"), 3)]), (3, [(((S.fromList ["p", "q"],"c")), 3)])]
-        }
+-- g = N.NBA { N.states = [1, 2, 3],
+--             N.finalStates = [1],
+--             N.inicialStates = [1, 2],
+--             N.delta = M.fromList [(1, [((S.fromList ["p"],"a"), 1), ((S.fromList ["q"],"b"), 2), ((S.fromList ["p"], "a"), 3)]) , (2, [((S.fromList ["p", "q"], "c"),3), ((S.fromList ["p", "q"],"a"), 1), ((S.fromList [],"a"), 3)]), (3, [(((S.fromList ["p", "q"],"c")), 3)])]
+--         }
 
 -- some test formulas
 -- psiTeseLocal1 = F.Not ((F.Globally (F.PropositionalSymbol "p")))
