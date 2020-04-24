@@ -6,7 +6,7 @@ module DTS (DTS (..), getAllActions, getLabel, getAgents,
             getNeighbours, deleteWhileDeadStates, dfs, addTransition,
             subTransitionSystem, generateDTSFromStdGen, addState,
             fullSimplify, deleteUnreachableStates, shortestPath,
-            shortestPathFromInitialState)
+            shortestPathFromInitialState, shortestPathFromInitialStateList)
 where
 
 import           CommonTypes
@@ -382,6 +382,30 @@ transpose dts =
                          )
                          M.empty
                          (transitionRelation dts)}
+
+
+-- | Input: A DTS and a list of node
+--   Output: The shortest path from any initial state to
+--           any of the nodes in the provided list
+shortestPathFromInitialStateList :: (Ord a, Ord i, Ord s, Ord prop) =>
+                                    DTS s i prop a ->
+                                    [s] ->
+                                    Maybe [s]
+shortestPathFromInitialStateList dts list
+  | (not . null) aux =
+    Just $ [head aux]
+  | otherwise =
+    if null shortestPaths
+      then Nothing -- case were no path exists
+      else helper (head $ shortestPaths) (tail shortestPaths)
+  where shortestPaths = filter isJust $
+                               map (shortestPathFromInitialState dts) list
+        inits = initialStates dts
+        aux = dropWhile (`S.notMember` inits) list
+        helper v [] = v
+        helper v (x:xs)
+          | fmap length v > fmap length x = helper x xs
+          | otherwise = helper v xs
 
 
 -- | Input: A DTS and a node
