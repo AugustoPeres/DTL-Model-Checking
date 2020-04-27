@@ -475,17 +475,29 @@ dotProductParticullarCase dts auto clo =
         props = S.filter F.isPropSymbol clo
         dtsWithTransitions = foldr (\x y -> T.addTransition y (fst $ fst x) (snd $ fst x) (snd x))
                                    dtsWithLabels
-                                   [((s, s'), a) | s <- newStates,
-                                                   s' <- newStates,
-                                                   a <- allActions,
-                                                   transitionIsPossible s s' a]
-        transitionIsPossible s s' a = (any (\x -> snd x == snd s' &&
-                                                 fst (fst x) == S.filter (`S.member` props) label &&
-                                                 snd (fst x) == a)
-                                          (fromMaybe [] (N.getNeighbours auto (snd s))))
-                                      &&
-                                      (T.isTransitionOfSystem dts (fst s) (fst s') a)
-                                      where label = S.fromList $ T.getLabel dts (fst s)
+                                   (makeTransitionStateDotProduct dts auto allActions props newStates)
+
+
+-- | Input: An DTS, an NBA, a state of their product
+--   Output: A list with tupples ((s, s'), a) denoting all the possible
+--           transitions in DTS * NBA
+makeTransitionStateDotProduct :: (Ord s, Ord i, Ord a) =>
+                                 T.DTS s i F.Formula a ->
+                                 N.NBA (S.Set F.Formula, a) ->
+                                 [a] ->
+                                 S.Set F.Formula ->
+                                 [(s, N.State)] -> -- transition system states
+                                 [(((s, N.State), (s, N.State)), a)]
+makeTransitionStateDotProduct dts auto actions props states =
+  foldr (\x@(s, q) y -> y ++
+                        [((x, (s', q')), a) | a  <- actions,
+                                              s' <- T.getNeighboursByAction dts s a,
+                                              q' <- N.getNeighboursGeneral auto
+                                                                           [q]
+                                                                           (S.filter (`S.member` props) (S.fromList $ T.getLabel dts s), a)]
+         )
+        []
+        states
 
 
 -- | Input: A DTS and an automaton

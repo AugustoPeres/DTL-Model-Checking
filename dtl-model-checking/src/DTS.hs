@@ -8,7 +8,7 @@ module DTS (DTS (..), getAllActions, getLabel, getAgents,
             fullSimplify, deleteUnreachableStates, shortestPath,
             shortestPathFromInitialState, shortestPathFromInitialStateList,
             subDTSWithInitialStates, empty, bfsWithStopCondition,
-            isReachableFromStates')
+            isReachableFromStates', getNeighboursByAction)
 where
 
 import           CommonTypes
@@ -514,35 +514,41 @@ isReachableFromStates' :: (Ord a, Ord i, Ord s, Ord prop) =>
                          [s] -> -- list of possible departure states
                          Bool
 isReachableFromStates' dts state list =
-  any (\x -> state
-             `elem`
-              bfsWithStopCondition dts
-                                   [x]
-                                   [ ]
-                                   (\x1 _ -> state `elem` x1)
-      ) list
+  snd $ bfsWithStopCondition dts list [] (\x _ -> state `elem` x)
 
 
 -- | Input: A DTS a Q, a list of visited states and a function
---          (q -> visited -> boll) that works as a stopage
---          condition
---   Output: The visited states until the stopage condition is met
---   NOTE: When the stopage condition is met we return all the states
+--          (q -> visited -> boll) that works as a stoppage
+--          condition, along with a boolean that checks if the condition was met
+--   Output: The visited states until the stoppage condition is met
+--   NOTE: When the stoppage condition is met we return all the states
 --         that were already visited together with the ones in the q
 bfsWithStopCondition :: (Ord a , Ord i, Ord s, Ord prop) =>
                         DTS s i prop a ->
                         [s] -> -- q
                         [s] -> -- visited states
-                        ([s] -> [s] -> Bool) -> -- the stopage condition
-                        [s]
-bfsWithStopCondition _ [] v _ = v
+                        ([s] -> [s] -> Bool) -> -- the stoppage condition
+                        ([s], Bool)
+bfsWithStopCondition _ [] v f = (v, f [] v)
 bfsWithStopCondition dts q@(x:xs) v f
-  | f q v = v `union` q
+  | f q v = (v `union` q, True)
   | otherwise = bfsWithStopCondition dts
                                      (xs ++ ((new \\ v) \\q ))
                                      (v ++ [x])
                                      f
   where new = getNeighbours dts x
+
+
+-- | Input: A state and an action
+--   Output: The neighbours of the state by that action
+getNeighboursByAction :: (Ord s, Ord i, Ord a, Ord prop) =>
+                         DTS s i prop a ->
+                         s ->
+                         a ->
+                         [s]
+getNeighboursByAction dts state action =
+  fromMaybe [] (transitionRelation dts M.!? (state, action))
+
 
 -- | Input: A DTS and a state.
 --   Output: A list with all the nodes directly acced from that node
