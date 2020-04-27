@@ -36,27 +36,22 @@ iElementarySetsAgent :: SOF -> -- ^ the closure of a formula
                         [SOF]
 iElementarySetsAgent clo i alpha =
   -- this is probably not the most efficient way to do this
-  nub [downArrow set i alpha | set <- S.toList $ S.powerSet clo,
-                                     isIElementary set clo i ]
+  nub [downArrow set subAgent | set <- S.toList $ S.powerSet clo,
+                                isIElementary set clo i ]
+  -- minor optimization. We pass the subformulas of the agent instead computing every time
+  where subAgent = S.fromList $ subFormulasAgent alpha i
 
--- | Input: A set of formulas, an angent, the global formula
+-- | Input: A set of formulas, the subformulas of some agent,
 --          the set of propositinal symbols for the agent,
---          This last set is very important for the limit case where
---          no propositinal symbols appear in the closure of the formula
---          for the agent
 --   Output: A set of formulas with the formulas that are in
 --           the domain of the agent
---   NOTE: Another possible optimizations would be to pass the subformulas
---         for the agent instead of computing every time in the variable aux3 and aux2
 downArrow :: SOF ->
-             Agent ->
-             GlobalFormula ->
+             SOF ->
              SOF
-downArrow set i alpha =
+downArrow set subAgent =
   S.filter (\x -> x `S.member` aux || isGlobal x) set
-  where aux  = S.union aux2 aux3
-        aux2 = S.map negateFormula aux3
-        aux3 = S.fromList $ subFormulasAgent alpha i
+  where aux  = S.union aux2 subAgent
+        aux2 = S.map negateFormula subAgent
 
 -- -----------------------------------------------------------------------------
 -- END: Construction and manipulation of sets
