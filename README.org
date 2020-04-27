@@ -69,13 +69,19 @@
       Process exited with code: ExitFailure 1
     #+END_SRC
 
-**** Make automatons smaller [2/4]
+**** DONE Make automatons smaller [4/4]
+     CLOSED: [2020-04-25 Sat 16:55]
      - [X] Make the states as in the solution proposal.
-     - [X] Change the function ~dorProduct~.
-     - [ ] Remove the propositional symbols input from the automatons
+     - [X] Change the function ~dotProduct~.
+     - [X] Remove the propositional symbols input from the automatons
        We need only the propositional symbols present in the formula therefore
        it is stupid to use pass all the propositional symbols to the automaton.
-     - [ ] Do the same for the function that gives the counter examples.
+     - [X] Do the same for the function that gives the counter examples.
+       In this function when returning the sub-transition systems I should
+       change the function to not delete any initial states.
+       I should also change the function to delete any transitions between the
+       states in that strongly connected component that are not in the product
+       with the automaton.
 
      Do this using the new definition. To see what the new definition is just
      refer to question in the email to Jaime using the definition of /maximal/ set.
@@ -200,9 +206,120 @@
      1. Change the states of the automaton in order to allow just propositional
         symbols that appear in the closure of the formula.
      2. Change the ~dotProduct~ function to allow for transitions when the label
-        of the state is contains the Set responsible for the transition in the automaton. 
-     
+        of the state is contains the Set responsible for the transition in the automaton.
+   
+     After this optimization the benchmarks greatly increase but sill need to be
+     aborted after 128 states.
+
+     #+BEGIN_SRC 
+    benchmarking 8 states and easy formulas:/Testing for transition system t8StatesAgents1 and fEasy1
+    time                 4.452 ms   (4.393 ms .. 4.797 ms)
+                        0.916 R²   (0.910 R² .. 0.946 R²)
+    mean                 5.983 ms   (5.651 ms .. 6.210 ms)
+    std dev              1.247 ms   (1.153 ms .. 1.333 ms)
+    variance introduced by outliers: 86% (severely inflated)
+
+    benchmarking 8 states and easy formulas:/Testing for transition system t8StatesAgents2 and fEasy1
+    time                 25.78 ms   (25.56 ms .. 25.72 ms)
+                        0.998 R²   (0.997 R² .. 0.998 R²)
+    mean                 26.07 ms   (26.05 ms .. 26.53 ms)
+    std dev              799.3 μs   (796.2 μs .. 1.052 ms)
+
+    benchmarking 8 states and easy formulas:/Testing for transition system t8StatesAgents3 and fEasy1
+    time                 25.09 ms   (24.77 ms .. 25.49 ms)
+                        0.994 R²   (0.994 R² .. 0.996 R²)
+    mean                 27.68 ms   (26.79 ms .. 28.22 ms)
+    std dev              2.419 ms   (2.185 ms .. 2.446 ms)
+    variance introduced by outliers: 37% (moderately inflated)
+
+    benchmarking 8 states and easy formulas:/Testing for transition system t8StatesAgents4 and fEasy1
+    time                 9.202 ms   (9.192 ms .. 9.314 ms)
+                        0.997 R²   (0.995 R² .. 0.998 R²)
+    mean                 9.334 ms   (9.333 ms .. 9.503 ms)
+    std dev              266.2 μs   (250.7 μs .. 375.3 μs)
+
+    benchmarking 16 states and easy formulas:/Testing for transition system t16StatesAgents1 and fEasy1
+    time                 188.6 ms   (188.6 ms .. 189.2 ms)
+                        1.000 R²   (1.000 R² .. 1.000 R²)
+    mean                 188.3 ms   (188.2 ms .. 188.8 ms)
+    std dev              774.6 μs   (476.5 μs .. 777.6 μs)
+    variance introduced by outliers: 14% (moderately inflated)
+
+    benchmarking 16 states and easy formulas:/Testing for transition system t16StatesAgents2 and fEasy1
+    time                 234.1 ms   (233.1 ms .. 239.0 ms)
+                        0.998 R²   (0.998 R² .. 1.000 R²)
+    mean                 235.2 ms   (233.8 ms .. 235.4 ms)
+    std dev              4.190 ms   (4.190 ms .. 4.190 ms)
+    variance introduced by outliers: 14% (moderately inflated)
+
+    benchmarking 16 states and easy formulas:/Testing for transition system t16StatesAgents3 and fEasy1
+    time                 166.0 ms   (166.3 ms .. 166.9 ms)
+                        1.000 R²   (1.000 R² .. 1.000 R²)
+    mean                 166.4 ms   (166.1 ms .. 166.7 ms)
+    std dev              366.3 μs   (232.2 μs .. 383.4 μs)
+    variance introduced by outliers: 12% (moderately inflated)
+
+    benchmarking 16 states and easy formulas:/Testing for transition system t16StatesAgents4 and fEasy1
+    time                 317.1 ms   (302.6 ms .. 324.5 ms)
+                        0.987 R²   (0.976 R² .. 1.000 R²)
+    mean                 327.3 ms   (319.0 ms .. 327.3 ms)
+    std dev              19.02 ms   (18.92 ms .. 19.02 ms)
+    variance introduced by outliers: 16% (moderately inflated)
+
+    benchmarking 32 states and easy formulas:/Testing for transition system t32StatesAgents1 and fEasy1
+    time                 2.775 s    (2.767 s .. 2.917 s)
+                        0.999 R²   (0.999 R² .. 1.000 R²)
+    mean                 2.818 s    (2.818 s .. 2.818 s)
+    std dev              39.54 ms   (12.14 ms .. 45.80 ms)
+    variance introduced by outliers: 19% (moderately inflated)
+
+    benchmarking 32 states and easy formulas:/Testing for transition system t32StatesAgents2 and fEasy1
+    time                 1.633 s    (1.603 s .. 1.638 s)
+                        0.999 R²   (0.999 R² .. 1.000 R²)
+    mean                 1.630 s    (1.621 s .. 1.649 s)
+    std dev              19.45 ms   (19.45 ms .. 19.45 ms)
+    variance introduced by outliers: 19% (moderately inflated)
+
+    benchmarking 64 states and easy formulas:/Testing for transition system t64StatesAgents1 and fEasy1
+    time                 21.54 s    (21.05 s .. 21.61 s)
+                        1.000 R²   (1.000 R² .. 1.000 R²)
+    mean                 21.07 s    (20.99 s .. 21.21 s)
+    std dev              241.9 ms   (8.817 ms .. 288.8 ms)
+    variance introduced by outliers: 19% (moderately inflated)
+
+    benchmarking 64 states and easy formulas:/Testing for transition system t64StatesAgents2 and fEasy1
+    time                 18.66 s    (18.64 s .. 18.76 s)
+                        1.000 R²   (1.000 R² .. 1.000 R²)
+    mean                 18.46 s    (18.41 s .. 18.46 s)
+    std dev              102.5 ms   (43.26 ms .. 102.5 ms)
+    variance introduced by outliers: 19% (moderately inflated)
+
+    benchmarking 128 states and easy formulas:/Testing for transition system t128StatesAgents1 and fEasy1
+    time                 161.9 s    (161.8 s .. 162.3 s)
+                        1.000 R²   (1.000 R² .. 1.000 R²)
+    mean                 161.2 s    (161.2 s .. 161.4 s)
+    std dev              396.8 ms   (396.8 ms .. 396.8 ms)
+    variance introduced by outliers: 19% (moderately inflated)
+
+    benchmarking 128 states and easy formulas:/Testing for transition system t128StatesAgents2 and fEasy1
+    time                 114.2 s    (114.2 s .. 114.3 s)
+                        1.000 R²   (1.000 R² .. 1.000 R²)
+    mean                 114.0 s    (114.0 s .. 114.0 s)
+    std dev              360.3 ms   (354.7 ms .. 434.5 ms)
+    variance introduced by outliers: 19% (moderately inflated)
+
+    benchmarking 256 states and easy formulas:/Testing for transition system t256StatesAgents1 and fEasy1
+    ^C 
+    #+END_SRC
+
+    
+
 **** TODO In the function ~downArrow~ see the optimization note 
+
+**** TODO Efficiency of visited is reachable
+     In the modules ~DTS.hs~ and ~NBA.hs~ when using the functions is reachable
+     I use dfs. This makes a traversal over all the transitions system. This
+     could be improved to stop when the arrival node is found.
 
 **** TODO When converting GNBA -> NBA.
    I believe this function would be much more efficient if I make a direction
@@ -219,11 +336,6 @@
      automatons before and computing strongly connected components.
      The reduction of the automatons should include reducing the GNBA based on
      the final sets.
-
-**** Efficiency of visited is reachable
-     In the modules ~DTS.hs~ and ~NBA.hs~ when using the functions is reachable
-     i use dfs. This makes a traversal over all the transitions system. This
-     could be improved to stop when the arrival node is found.
 
 *** Things that could use improvement.
 
