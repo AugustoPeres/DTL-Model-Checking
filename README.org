@@ -314,17 +314,131 @@
 
     
 
-**** TODO In the function ~downArrow~ see the optimization note 
+**** DONE In the function ~downArrow~ see the optimization note 
+     CLOSED: [2020-04-27 Mon 10:58]
+     Does not appear to affect performance but that might just be because the
+     benchmarks are for small formulas so each call to ~downarrow~ is not
+     actually expensive
 
-**** TODO Efficiency of visited is reachable
+**** DONE Efficiency of visited is reachable
+     CLOSED: [2020-04-27 Mon 14:11]
      In the modules ~DTS.hs~ and ~NBA.hs~ when using the functions is reachable
      I use dfs. This makes a traversal over all the transitions system. This
      could be improved to stop when the arrival node is found.
 
+     This optimization greatly improved the speed of the model checking
+     algorithm. We can now model check for systems with 256 states
+
+     #+BEGIN_SRC shell
+     benchmarking 8 states and easy formulas:/Testing for transition system t8StatesAgents1 and fEasy1
+     time                 3.009 ms   (2.994 ms .. 2.999 ms)
+                         0.986 R²   (0.977 R² .. 0.984 R²)
+     mean                 3.359 ms   (3.313 ms .. 3.418 ms)
+     std dev              401.1 μs   (391.3 μs .. 483.4 μs)
+     variance introduced by outliers: 74% (severely inflated)
+
+     benchmarking 8 states and easy formulas:/Testing for transition system t8StatesAgents2 and fEasy1
+     time                 8.041 ms   (8.037 ms .. 8.070 ms)
+                         0.999 R²   (0.999 R² .. 0.999 R²)
+     mean                 8.140 ms   (8.105 ms .. 8.167 ms)
+     std dev              206.7 μs   (166.7 μs .. 236.4 μs)
+
+     benchmarking 8 states and easy formulas:/Testing for transition system t8StatesAgents3 and fEasy1
+     time                 10.72 ms   (10.58 ms .. 11.15 ms)
+                         0.984 R²   (0.978 R² .. 0.987 R²)
+     mean                 10.10 ms   (10.10 ms .. 10.10 ms)
+     std dev              633.6 μs   (633.6 μs .. 633.6 μs)
+     variance introduced by outliers: 32% (moderately inflated)
+
+     benchmarking 8 states and easy formulas:/Testing for transition system t8StatesAgents4 and fEasy1
+     time                 4.869 ms   (4.839 ms .. 4.914 ms)
+                         0.997 R²   (0.995 R² .. 0.999 R²)
+     mean                 4.897 ms   (4.897 ms .. 4.897 ms)
+     std dev              143.5 μs   (111.1 μs .. 147.7 μs)
+     variance introduced by outliers: 12% (moderately inflated)
+
+     benchmarking 16 states and easy formulas:/Testing for transition system t16StatesAgents1 and fEasy1
+     time                 48.53 ms   (48.56 ms .. 49.54 ms)
+                         0.998 R²   (0.996 R² .. 0.998 R²)
+     mean                 47.88 ms   (47.51 ms .. 48.58 ms)
+     std dev              1.071 ms   (832.3 μs .. 1.386 ms)
+
+     benchmarking 16 states and easy formulas:/Testing for transition system t16StatesAgents2 and fEasy1
+     time                 49.89 ms   (45.48 ms .. 51.40 ms)
+                         0.952 R²   (0.958 R² .. 0.999 R²)
+     mean                 45.63 ms   (45.10 ms .. 47.55 ms)
+     std dev              4.432 ms   (4.432 ms .. 4.432 ms)
+     variance introduced by outliers: 34% (moderately inflated)
+
+     benchmarking 16 states and easy formulas:/Testing for transition system t16StatesAgents3 and fEasy1
+     time                 41.03 ms   (40.41 ms .. 41.14 ms)
+                         0.999 R²   (0.998 R² .. 1.000 R²)
+     mean                 41.30 ms   (41.21 ms .. 41.54 ms)
+     std dev              709.7 μs   (689.9 μs .. 714.3 μs)
+
+     benchmarking 16 states and easy formulas:/Testing for transition system t16StatesAgents4 and fEasy1
+     time                 47.32 ms   (46.84 ms .. 47.39 ms)
+                         1.000 R²   (1.000 R² .. 1.000 R²)
+     mean                 47.82 ms   (47.81 ms .. 47.97 ms)
+     std dev              484.3 μs   (484.3 μs .. 484.3 μs)
+
+     benchmarking 32 states and easy formulas:/Testing for transition system t32StatesAgents1 and fEasy1
+     time                 497.0 ms   (488.4 ms .. 551.3 ms)
+                         0.996 R²   (0.997 R² .. 1.000 R²)
+     mean                 521.9 ms   (514.0 ms .. 527.5 ms)
+     std dev              14.56 ms   (4.907 ms .. 15.38 ms)
+     variance introduced by outliers: 19% (moderately inflated)
+
+     benchmarking 32 states and easy formulas:/Testing for transition system t32StatesAgents2 and fEasy1
+     time                 236.0 ms   (233.7 ms .. 243.8 ms)
+                         0.999 R²   (0.997 R² .. 0.999 R²)
+     mean                 231.1 ms   (231.1 ms .. 231.1 ms)
+     std dev              4.009 ms   (4.009 ms .. 4.009 ms)
+     variance introduced by outliers: 14% (moderately inflated)
+
+     benchmarking 64 states and easy formulas:/Testing for transition system t64StatesAgents1 and fEasy1
+     time                 3.404 s    (3.394 s .. 3.424 s)
+                         1.000 R²   (1.000 R² .. 1.000 R²)
+     mean                 3.341 s    (3.321 s .. 3.364 s)
+     std dev              43.57 ms   (29.86 ms .. 43.57 ms)
+     variance introduced by outliers: 19% (moderately inflated)
+
+     benchmarking 64 states and easy formulas:/Testing for transition system t64StatesAgents2 and fEasy1
+     time                 3.525 s    (3.355 s .. 3.552 s)
+                         0.999 R²   (1.000 R² .. 1.000 R²)
+     mean                 3.508 s    (3.479 s .. 3.508 s)
+     std dev              39.21 ms   (28.68 ms .. 42.33 ms)
+     variance introduced by outliers: 19% (moderately inflated)
+
+     benchmarking 128 states and easy formulas:/Testing for transition system t128StatesAgents1 and fEasy1
+     time                 34.09 s    (31.41 s .. 33.64 s)
+                         0.993 R²   (0.990 R² .. 1.000 R²)
+     mean                 36.22 s    (35.68 s .. 36.82 s)
+     std dev              1.269 s    (284.1 ms .. 1.526 s)
+     variance introduced by outliers: 19% (moderately inflated)
+
+     benchmarking 128 states and easy formulas:/Testing for transition system t128StatesAgents2 and fEasy1
+     time                 21.99 s    (21.60 s .. 21.99 s)
+                         1.000 R²   (1.000 R² .. 1.000 R²)
+     mean                 23.62 s    (23.03 s .. 24.22 s)
+     std dev              1.304 s    (180.5 ms .. 1.551 s)
+     variance introduced by outliers: 19% (moderately inflated)
+
+     benchmarking 256 states and easy formulas:/Testing for transition system t256StatesAgents1 and fEasy1
+     time                 149.1 s    (149.1 s .. 149.4 s)
+                         1.000 R²   (1.000 R² .. 1.000 R²)
+     mean                 149.9 s    (149.7 s .. 150.5 s)
+     std dev              1.351 s    (277.2 ms .. 1.517 s)
+     variance introduced by outliers: 19% (moderately inflated)
+
+     benchmarking 256 states and easy formulas:/Testing for transition system t256StatesAgents2 and fEasy1
+     Progress 1/2: dtl-model-checking^C
+     #+END_SRC
+
 **** TODO When converting GNBA -> NBA.
-   I believe this function would be much more efficient if I make a direction
-   construction of the transition function.
-   See the note in the comment of ~convertGNBAToNBA~ in the aoutomata theoretic module.
+     I believe this function would be much more efficient if I make a direction
+     construction of the transition function.
+     See the note in the comment of ~convertGNBAToNBA~ in the aoutomata theoretic module.
 
 **** TODO The same as the previous point but for the ~dotProduct~. 
      It should be much more efficient if I make the construction of the
