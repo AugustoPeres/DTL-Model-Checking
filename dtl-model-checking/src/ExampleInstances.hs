@@ -1,9 +1,15 @@
 module ExampleInstances
-  ( -- exporting transition systems --
-    oneAgent1, fEasy1, fEasy2, fEasy3, t8States2Agents1, t8States2Agents2,
+  ( --exporting fromulas --
+    fEasy1, fEasy2, fEasy3,
+    fMedium1,
+    -- exporting transition systems --
+    oneAgent1,
+    t8States2Agents1, t8States2Agents2,
     t8States2Agents3, t8States2Agents4, t16States2Agents1, t16States2Agents2,
     t16States2Agents3, t16States2Agents4, t32States2Agents1, t32States2Agents2,
     t64States2Agents1, t64States2Agents2, t128States2Agents1, t128States2Agents2,
+    t256States2Agents1, t256States2Agents2, t512States2Agents1, t512States2Agents2,
+    t1024States2Agents1, t1024States2Agents2,
     tThesis, tThesisComHolds, tThesisNextNext, tThesisNextNextWitness
     -- end exporting transition systems --
   )
@@ -44,7 +50,12 @@ fEasy3 :: F.GlobalFormula
 fEasy3 = F.Local 1 (F.Comunicates 2 (F.PropositionalSymbol "q_1"))
 -- end easy formulas for two agents --
 
-
+-- some medium difficulty formulas --
+fMedium1 :: F.GlobalFormula
+fMedium1 = F.Local 1 (F.Implies (F.Comunicates 2 (F.Implies (F.Globally $ F.PropositionalSymbol "q1")
+                                                            (F.PropositionalSymbol "q2")))
+                                (F.Next $ F.PropositionalSymbol "p1"))
+-- end some medium formulas --
 -- -----------------------------------------------------------------------------
 -- END: Formulas
 -- -----------------------------------------------------------------------------
@@ -232,6 +243,79 @@ t128States2Agents2 = T.generateDTSFromStdGen 2
                                            0.1
                                            0.0125
 -- end of transition systems with 128 states --
+
+-- trnasition systems with 128 states --
+t256States2Agents1 :: T.DTS Int Int F.Formula String
+t256States2Agents1 = T.generateDTSFromStdGen 2
+                                           [
+                                             [F.FromLocal $ F.PropositionalSymbol "p1", F.FromLocal $ F.PropositionalSymbol "p2", F.FromLocal $ F.PropositionalSymbol "p3", F.FromLocal $ F.PropositionalSymbol "p4"],
+                                             [F.FromLocal $ F.PropositionalSymbol "q1", F.FromLocal $ F.PropositionalSymbol "q2", F.FromLocal $ F.PropositionalSymbol "q3", F.FromLocal $ F.PropositionalSymbol "q4"]
+                                           ]
+                                           [["a", "b"], ["a", "c"]]
+                                           (mkStdGen 3)
+                                           0.1
+                                           0.0125
+
+t256States2Agents2 :: T.DTS Int Int F.Formula String
+t256States2Agents2 = T.generateDTSFromStdGen 2
+                                           [
+                                             [F.FromLocal $ F.PropositionalSymbol "p1", F.FromLocal $ F.PropositionalSymbol "p2", F.FromLocal $ F.PropositionalSymbol "p3", F.FromLocal $ F.PropositionalSymbol "p4"],
+                                             [F.FromLocal $ F.PropositionalSymbol "q1", F.FromLocal $ F.PropositionalSymbol "q2", F.FromLocal $ F.PropositionalSymbol "q3", F.FromLocal $ F.PropositionalSymbol "q4"]
+                                           ]
+                                           [["a", "b"], ["a", "c"]]
+                                           (mkStdGen 4)
+                                           0.1
+                                           0.0125
+-- end of transition systems with 256 states --
+
+-- trnasition systems with 128 states --
+t512States2Agents1 :: T.DTS Int Int F.Formula String
+t512States2Agents1 = T.generateDTSFromStdGen 2
+                                           [
+                                             [F.FromLocal $ F.PropositionalSymbol "p1", F.FromLocal $ F.PropositionalSymbol "p2", F.FromLocal $ F.PropositionalSymbol "p3", F.FromLocal $ F.PropositionalSymbol "p4", F.FromLocal $ F.PropositionalSymbol "p5"],
+                                             [F.FromLocal $ F.PropositionalSymbol "q1", F.FromLocal $ F.PropositionalSymbol "q2", F.FromLocal $ F.PropositionalSymbol "q3", F.FromLocal $ F.PropositionalSymbol "q4"]
+                                           ]
+                                           [["a", "b"], ["a", "c"]]
+                                           (mkStdGen 3)
+                                           0.05
+                                           0.006
+
+t512States2Agents2 :: T.DTS Int Int F.Formula String
+t512States2Agents2 = T.generateDTSFromStdGen 2
+                                           [
+                                             [F.FromLocal $ F.PropositionalSymbol "p1", F.FromLocal $ F.PropositionalSymbol "p2", F.FromLocal $ F.PropositionalSymbol "p3", F.FromLocal $ F.PropositionalSymbol "p4", F.FromLocal $ F.PropositionalSymbol "p5"],
+                                             [F.FromLocal $ F.PropositionalSymbol "q1", F.FromLocal $ F.PropositionalSymbol "q2", F.FromLocal $ F.PropositionalSymbol "q3", F.FromLocal $ F.PropositionalSymbol "q4"]
+                                           ]
+                                           [["a", "b"], ["a", "c"]]
+                                           (mkStdGen 4)
+                                           0.05
+                                           0.006
+-- end of transition systems with 512 states --
+
+-- trnasition systems with 128 states --
+t1024States2Agents1 :: T.DTS Int Int F.Formula String
+t1024States2Agents1 = T.generateDTSFromStdGen 2
+                                           [
+                                             [F.FromLocal $ F.PropositionalSymbol "p1", F.FromLocal $ F.PropositionalSymbol "p2", F.FromLocal $ F.PropositionalSymbol "p3", F.FromLocal $ F.PropositionalSymbol "p4", F.FromLocal $ F.PropositionalSymbol "p5"],
+                                             [F.FromLocal $ F.PropositionalSymbol "q1", F.FromLocal $ F.PropositionalSymbol "q2", F.FromLocal $ F.PropositionalSymbol "q3", F.FromLocal $ F.PropositionalSymbol "q4", F.FromLocal $ F.PropositionalSymbol "q5"]
+                                           ]
+                                           [["a", "b"], ["a", "c"]]
+                                           (mkStdGen 3)
+                                           0.02
+                                           0.003
+
+t1024States2Agents2 :: T.DTS Int Int F.Formula String
+t1024States2Agents2 = T.generateDTSFromStdGen 2
+                                           [
+                                             [F.FromLocal $ F.PropositionalSymbol "p1", F.FromLocal $ F.PropositionalSymbol "p2", F.FromLocal $ F.PropositionalSymbol "p3", F.FromLocal $ F.PropositionalSymbol "p4", F.FromLocal $ F.PropositionalSymbol "p5"],
+                                             [F.FromLocal $ F.PropositionalSymbol "q1", F.FromLocal $ F.PropositionalSymbol "q2", F.FromLocal $ F.PropositionalSymbol "q3", F.FromLocal $ F.PropositionalSymbol "q4", F.FromLocal $ F.PropositionalSymbol "q5"]
+                                           ]
+                                           [["a", "b"], ["a", "c"]]
+                                           (mkStdGen 4)
+                                           0.02
+                                           0.003
+-- end of transition systems with 1024 states --
+
 
 tThesis :: T.DTS Int Int F.Formula String
 tThesis = T.DTS {T.states = S.fromList [1, 2, 3, 4],

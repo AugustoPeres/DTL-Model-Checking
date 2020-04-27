@@ -6,7 +6,8 @@ module DTS (DTS (..), getAllActions, getLabel, getAgents,
             getNeighbours, deleteWhileDeadStates, dfs, addTransition,
             subTransitionSystem, generateDTSFromStdGen, addState,
             fullSimplify, deleteUnreachableStates, shortestPath,
-            shortestPathFromInitialState, shortestPathFromInitialStateList)
+            shortestPathFromInitialState, shortestPathFromInitialStateList,
+            subDTSWithInitialStates, empty)
 where
 
 import           CommonTypes
@@ -72,6 +73,11 @@ instance (Show s, Show prop, Show a, Ord s, Ord prop) => FiniteGraphRepresentabl
     where sts = states system
           tr = transitionRelation system
           stateMap = M.fromList (zip (S.toList sts) [1..])
+
+
+-- | This is just a constant, representing an empty trnasition system
+empty :: DTS s i prop a
+empty = DTS S.empty M.empty S.empty M.empty M.empty M.empty
 
 -- | Input: A list of states
 --   Output: An empty transition system with only those states
@@ -204,8 +210,24 @@ addTransitionSafe dts departure arrival action =
   else dts
 
 
+-- | Input: A transition system and a list of states
+--   Output: A transition system with all the states deleted
+--           except the ones in the that list and in the shortest
+--           path from an initial state to that state in a list.
+--           If there is no such path we simply return the sub transition system
+subDTSWithInitialStates :: (Ord a, Ord i, Ord s, Ord prop) =>
+                           DTS s i prop a ->
+                           [s] ->
+                           DTS s i prop a
+subDTSWithInitialStates dts list
+  | isJust pathKept =
+    subTransitionSystem dts (list `union` fromJust pathKept)
+  | otherwise = subTransitionSystem dts list
+  where pathKept = shortestPathFromInitialStateList dts list
+
+
 -- | Input: A transitions system and a set of states
---   Output: A transition system with all the other states delete
+--   Output: A transition system with all the other states deleted
 subTransitionSystem :: (Ord a, Ord i, Ord s, Ord prop) =>
                        DTS s i prop a ->
                        [s] ->

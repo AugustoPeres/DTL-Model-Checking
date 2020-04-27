@@ -1,6 +1,7 @@
 {-# LANGUAGE FlexibleInstances    #-}
 {-# LANGUAGE TypeSynonymInstances #-}
-module AutomataTheoreticApproach (modelCheck, modelCheckWithCounterExamples)
+module AutomataTheoreticApproach (AutomataCounterExample(..),
+                                  modelCheck, modelCheckWithCounterExamples)
   where
 
 import           CommonTypes
@@ -32,7 +33,11 @@ type GNBAState = [(I.SOF, Marker)]
 type Action = String
 type AlphabetSymbol = (I.SOF, Action)
 
-
+data AutomataCounterExample s = ACE { dotProductWitness  :: T.DTS (s, N.State) Int N.State Action
+                                    , scc                :: T.DTS (s, N.State) Int N.State Action
+                                    , counterExample     :: T.DTS s Int F.Formula Action
+                                    , fairnessConstraint :: [(s, N.State)]}
+                                deriving (Show)
 -- -----------------------------------------------------------------------------
 -- BEGIN: Description of the module
 -- -----------------------------------------------------------------------------
@@ -85,9 +90,7 @@ modelCheckWithCounterExamples :: Ord s =>
                                 T.DTS s Int F.Formula Action ->
                                 F.GlobalFormula ->
                                 Int ->
-                                ModelCheckingAnswer [(T.DTS (s , N.State) Int N.State Action,
-                                                     [(s, N.State)])
-                                                    ]
+                                ModelCheckingAnswer [AutomataCounterExample s]
 modelCheckWithCounterExamples dts alpha n =
   go relevant Satisfies
   where gComp = makeComplementaryGNBA alpha n actions
@@ -113,9 +116,12 @@ modelCheckWithCounterExamples dts alpha n =
         go [] b = b
         go (x:xs) acc = if any (\state -> S.member state persStates) x
           then go xs (acc <>
-                      CounterExample [(T.subTransitionSystem tDotnbaComp x,
-                                      filter (`elem` persStates) x)])
+                      CounterExample [ACE (exemp)
+                                          (T.subTransitionSystem tDotnbaComp x)
+                                          (T.subDTSWithInitialStates dts' (S.toList $ S.map fst (T.states(exemp))))
+                                          (filter (`elem` persStates) x)])
           else go xs acc
+          where exemp = T.subDTSWithInitialStates tDotnbaComp x
 
 
 -- | Input: A transition system, a DTL formula and an integer.
@@ -426,8 +432,6 @@ makeStatesGNBA alpha n clo =
 -- -----------------------------------------------------------------------------
 -- END: Making the automaton for the complementary language
 -- -----------------------------------------------------------------------------
-
-
 
 
 -- | Input: A DTS and, automaton and the closure of a formula.
