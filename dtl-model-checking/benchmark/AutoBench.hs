@@ -65,28 +65,45 @@ benchmarks32StatesEasyFormulas =
     bench "Testing for transition system t32StatesAgents1 and fEasy1"
           (nf (modelCheck t32States2Agents1 fEasy1) 2),
     bench "Testing for transition system t32StatesAgents2 and fEasy1"
-          (nf (modelCheck t32States2Agents2 fEasy1) 2)  ]
+          (nf (modelCheck t32States2Agents2 fEasy1) 2),
+    bench "Testing for transition system t32StatesAgents1 and fEasy2"
+          (nf (modelCheck t32States2Agents1 fEasy2) 2),
+    bench "Testing for transition system t32StatesAgents2 and fEasy2"
+          (nf (modelCheck t32States2Agents2 fEasy2) 2)
+  ]
 
 benchmarks64StatesEasyFormulas =
   [
     bench "Testing for transition system t64StatesAgents1 and fEasy1"
           (nf (modelCheck t64States2Agents1 fEasy1) 2),
     bench "Testing for transition system t64StatesAgents2 and fEasy1"
-          (nf (modelCheck t64States2Agents2 fEasy1) 2)  ]
+          (nf (modelCheck t64States2Agents2 fEasy1) 2),
+    bench "Testing for transition system t64StatesAgents1 and fEasy2"
+          (nf (modelCheck t64States2Agents1 fEasy2) 2),
+    bench "Testing for transition system t64StatesAgents2 and fEasy2"
+          (nf (modelCheck t64States2Agents2 fEasy2) 2) ]
 
 benchmarks128StatesEasyFormulas =
   [
     bench "Testing for transition system t128StatesAgents1 and fEasy1"
           (nf (modelCheck t128States2Agents1 fEasy1) 2),
     bench "Testing for transition system t128StatesAgents2 and fEasy1"
-          (nf (modelCheck t128States2Agents2 fEasy1) 2)  ]
+          (nf (modelCheck t128States2Agents2 fEasy1) 2),
+    bench "Testing for transition system t128StatesAgents1 and fEasy2"
+          (nf (modelCheck t128States2Agents1 fEasy2) 2),
+    bench "Testing for transition system t128StatesAgents2 and fEasy2"
+          (nf (modelCheck t128States2Agents2 fEasy2) 2)]
 
 benchmarks256StatesEasyFormulas =
   [
     bench "Testing for transition system t256StatesAgents1 and fEasy1"
           (nf (modelCheck t256States2Agents1 fEasy1) 2),
     bench "Testing for transition system t256StatesAgents2 and fEasy1"
-          (nf (modelCheck t256States2Agents2 fEasy1) 2)
+          (nf (modelCheck t256States2Agents2 fEasy1) 2),
+    bench "Testing for transition system t256StatesAgents1 and fEasy2"
+          (nf (modelCheck t256States2Agents1 fEasy2) 2),
+    bench "Testing for transition system t256StatesAgents2 and fEasy2"
+          (nf (modelCheck t256States2Agents2 fEasy2) 2)
   ]
 
 benchmarks512StatesEasyFormulas =
@@ -94,7 +111,11 @@ benchmarks512StatesEasyFormulas =
     bench "Testing for transition system t512StatesAgents1 and fEasy1"
           (nf (modelCheck t512States2Agents1 fEasy1) 2),
     bench "Testing for transition system t512StatesAgents2 and fEasy1"
-          (nf (modelCheck t512States2Agents2 fEasy1) 2)
+          (nf (modelCheck t512States2Agents2 fEasy1) 2),
+    bench "Testing for transition system t512StatesAgents1 and fEasy2"
+          (nf (modelCheck t512States2Agents1 fEasy2) 2),
+    bench "Testing for transition system t512StatesAgents2 and fEasy2"
+          (nf (modelCheck t512States2Agents2 fEasy2) 2)
   ]
 
 benchmarks1024StatesEasyFormulas =

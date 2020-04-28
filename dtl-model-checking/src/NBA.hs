@@ -165,8 +165,8 @@ compressAlphaBalls a =
 
 -- | Receives an automaton and fully compresses it using alpha balls
 --   and never accepting states.
-fullSimplify :: Eq a => NBA a -> NBA -> a
-fullSimplify auto = compressAlphaBalls . deleteNeverAcceptingStates
+fullSimplify :: Eq a => NBA a -> NBA a
+fullSimplify = compressAlphaBalls . deleteNeverAcceptingStates
 
 -- ---------------------------------------------------------------------
 -- End of transformation functions
@@ -269,11 +269,12 @@ getAlphaBalls a =
 
 -- | This function decomposes the automaton in its strongly
 --   maximal conected components using the Kosaraju's algorithm
+--   NOTE: error on empty automatons
 kosaraju :: NBA a ->
             [[State]] -- ^ list with strongly connected maximal conected components
 kosaraju a =
-  helper ord [] []
-  where ord =  makeOrder $ dfs a [1] [] True
+  helper ord' [] []
+  where ord' =  makeOrder $ dfs a [head s] [] True
         makeOrder ord
           | s == sort ord = ord
           | otherwise = makeOrder ((dfs a [head (s \\ ord)] ord True \\ ord) ++ ord)

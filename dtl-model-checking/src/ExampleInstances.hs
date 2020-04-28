@@ -49,7 +49,7 @@ fEasy1 :: F.GlobalFormula
 fEasy1 = F.Local 1 (F.Next $ F.PropositionalSymbol "p1")
 
 fEasy2 :: F.GlobalFormula
-fEasy2 = F.Local 1 (F.Next $ F.Implies (F.Not $ F.PropositionalSymbol "p1")(F.PropositionalSymbol "p2"))
+fEasy2 = F.Local 1 (F.Globally $ F.Implies (F.PropositionalSymbol "p1")(F.PropositionalSymbol "p2"))
 
 fEasy3 :: F.GlobalFormula
 fEasy3 = F.Local 1 (F.Comunicates 2 (F.PropositionalSymbol "q_1"))
@@ -72,7 +72,7 @@ gnbafEasy1 = A.makeComplementaryGNBA fEasy1 2 [["a", "b"], ["a", "c"]]
 nbafEasy1  = A.convertGNBAToNBA gnbafEasy1 (G.getAlphabet gnbafEasy1)
 
 gnbafEasy2 = A.makeComplementaryGNBA fEasy2 2 [["a", "b"], ["a", "c"]]
-nbafEasy2  = A.convertGNBAToNBA gnbafEasy2 (G.getAlphabet gnbafEasy1)
+nbafEasy2  = A.convertGNBAToNBA gnbafEasy2 (G.getAlphabet gnbafEasy2)
 
 gnbafMedium1 = A.makeComplementaryGNBA fMedium1 2 [["a", "b"], ["a", "c"]]
 nbafMedium1  = A.convertGNBAToNBA gnbafMedium1 (G.getAlphabet gnbafMedium1)

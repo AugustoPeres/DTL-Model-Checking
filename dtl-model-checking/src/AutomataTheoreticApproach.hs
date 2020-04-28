@@ -153,7 +153,7 @@ modelCheck dts alpha n =
   where gComp = makeComplementaryGNBA alpha n actions
         actions = map (T.getActionsAgent dts) [1..n]
         -- now we convert to a NBA --
-        nbaComp = convertGNBAToNBA gComp (G.getAlphabet gComp)
+        nbaComp = N.fullSimplify $ convertGNBAToNBA gComp (G.getAlphabet gComp)
         fs = N.finalStates nbaComp
         -- now we make the dot product and then remove irrelevant states --
         clo = F.closureFormula alpha n
@@ -163,7 +163,7 @@ modelCheck dts alpha n =
         persStates = S.filter (\x -> (head $ T.getLabel tDotnbaComp x) `elem` fs)
                               (T.states tDotnbaComp)
         -- strongly connected componets --
-        scc = T.kosaraju tDotnbaComp
+        --scc = T.kosaraju tDotnbaComp
 
 
 
