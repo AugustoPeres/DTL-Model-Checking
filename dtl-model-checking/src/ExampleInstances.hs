@@ -2,6 +2,8 @@ module ExampleInstances
   ( --exporting fromulas --
     fEasy1, fEasy2, fEasy3,
     fMedium1,
+    -- exporting automatons
+    gnbafEasy1, nbafEasy1, nbafEasy2, nbafMedium1,
     -- exporting transition systems --
     oneAgent1,
     t8States2Agents1, t8States2Agents2,
@@ -23,7 +25,10 @@ import qualified Data.Map.Lazy             as M
 import qualified Data.Set                  as S
 import qualified DTLFormula                as F
 import qualified DTS                       as T
+import qualified GNBA                      as G
+import qualified NBA                       as N
 import System.Random
+import qualified AutomataTheoreticApproach as A
 
 
 -- -----------------------------------------------------------------------------
@@ -58,6 +63,21 @@ fMedium1 = F.Local 1 (F.Implies (F.Comunicates 2 (F.Implies (F.Globally $ F.Prop
 -- end some medium formulas --
 -- -----------------------------------------------------------------------------
 -- END: Formulas
+-- -----------------------------------------------------------------------------
+
+-- -----------------------------------------------------------------------------
+-- BEGIN: Some automatons for formulas and the transition systems
+-- -----------------------------------------------------------------------------
+gnbafEasy1 = A.makeComplementaryGNBA fEasy1 2 [["a", "b"], ["a", "c"]]
+nbafEasy1  = A.convertGNBAToNBA gnbafEasy1 (G.getAlphabet gnbafEasy1)
+
+gnbafEasy2 = A.makeComplementaryGNBA fEasy2 2 [["a", "b"], ["a", "c"]]
+nbafEasy2  = A.convertGNBAToNBA gnbafEasy2 (G.getAlphabet gnbafEasy1)
+
+gnbafMedium1 = A.makeComplementaryGNBA fMedium1 2 [["a", "b"], ["a", "c"]]
+nbafMedium1  = A.convertGNBAToNBA gnbafMedium1 (G.getAlphabet gnbafMedium1)
+-- -----------------------------------------------------------------------------
+-- END: Some automatons for formulas and the transition systems
 -- -----------------------------------------------------------------------------
 
 

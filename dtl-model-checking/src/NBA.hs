@@ -1,7 +1,8 @@
 module NBA
   (
   NBA(..), State, getNeighbours, getNeighboursGeneral, deleteNeverAcceptingStates,
-  empty, addState, addInitialState, addFinalState, addTransition
+  empty, addState, addInitialState, addFinalState, addTransition, compressAlphaBalls,
+  getAlphaBalls, getNeverAcceptingStates, fullSimplify
   ) where
 
 
@@ -147,6 +148,7 @@ deleteNeverAcceptingStates :: NBA a -> -- ^ Automaton
                               NBA a    -- ^ Automaton without states
 deleteNeverAcceptingStates a = deleteStates a (getNeverAcceptingStates a)
 
+-- | Finds all the alpha balls and compresses them
 compressAlphaBalls :: Eq a => NBA a -> NBA a
 compressAlphaBalls a =
   deleteStates NBA {states=s, inicialStates=i, finalStates=newFinalStates, delta=d'} delstates
@@ -160,6 +162,11 @@ compressAlphaBalls a =
              (\k y -> if k `elem` alphaStates then map (\(x, _) -> (x, k)) y else y)
              d
         d  = delta a
+
+-- | Receives an automaton and fully compresses it using alpha balls
+--   and never accepting states.
+fullSimplify :: Eq a => NBA a -> NBA -> a
+fullSimplify auto = compressAlphaBalls . deleteNeverAcceptingStates
 
 -- ---------------------------------------------------------------------
 -- End of transformation functions

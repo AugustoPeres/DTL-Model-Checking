@@ -514,7 +514,9 @@ isReachableFromStates' :: (Ord a, Ord i, Ord s, Ord prop) =>
                          [s] -> -- list of possible departure states
                          Bool
 isReachableFromStates' dts state list =
-  snd $ bfsWithStopCondition dts list [] (\x _ -> state `elem` x)
+  snd $ bfsWithStopCondition dts list [] (\q _ -> if null q
+                                                  then False
+                                                  else state `elem` getNeighbours dts (head q))
 
 
 -- | Input: A DTS a Q, a list of visited states and a function

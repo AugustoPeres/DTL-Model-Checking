@@ -1,7 +1,8 @@
 {-# LANGUAGE FlexibleInstances    #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 module AutomataTheoreticApproach (AutomataCounterExample(..),
-                                  modelCheck, modelCheckWithCounterExamples)
+                                  modelCheck, modelCheckWithCounterExamples, makeComplementaryGNBA,
+                                  convertGNBAToNBA, dotProductParticullarCase)
   where
 
 import           CommonTypes
@@ -15,7 +16,7 @@ import qualified Ielementary   as I
 import qualified NBA           as N
 --import System.Random
 import Data.Maybe
-import ExampleInstances
+--import ExampleInstances
 
 -- The data marker is just used to mark the states.
 -- Recall from the definition in the thesis that states
@@ -34,7 +35,7 @@ type Action = String
 type AlphabetSymbol = (I.SOF, Action)
 
 data AutomataCounterExample s = ACE { dotProductWitness  :: T.DTS (s, N.State) Int N.State Action
-                                    , scc                :: T.DTS (s, N.State) Int N.State Action
+                                    , sccWitness         :: T.DTS (s, N.State) Int N.State Action
                                     , counterExample     :: T.DTS s Int F.Formula Action
                                     , fairnessConstraint :: [(s, N.State)]}
                                 deriving (Show)
@@ -143,10 +144,12 @@ modelCheck :: Ord s =>
               Int -> -- number of agents
               Bool
 modelCheck dts alpha n =
-  not $ any (\x -> any (\comp -> x `elem` comp &&
-                                 any (\y -> y `elem` T.getNeighbours tDotnbaComp x) comp)
-                       scc)
-            persStates
+  not $
+    any (\x -> T.isReachableFromStates' tDotnbaComp x [x]) persStates
+    -- any (\x -> any (\comp -> x `elem` comp &&
+    --                          any (\y -> y `elem` T.getNeighbours tDotnbaComp x) comp)
+    --                scc)
+    --     persStates
   where gComp = makeComplementaryGNBA alpha n actions
         actions = map (T.getActionsAgent dts) [1..n]
         -- now we convert to a NBA --
