@@ -369,8 +369,8 @@ kosaraju :: (Ord s, Ord i, Ord prop, Ord a) =>
             DTS  s i prop a ->
             [[s]]
 kosaraju dts =
-  helper ord [] []
-  where ord = makeOrder $ dfs dts [S.elemAt 0 sts] [] True
+  helper ord' [] []
+  where ord' = makeOrder $ dfs dts [S.elemAt 0 sts] [] True
         makeOrder ord
           | sts == S.fromList ord = ord
           | otherwise = makeOrder ((dfs dts [head $ lsts \\ ord] ord True\\ ord) ++ ord)
