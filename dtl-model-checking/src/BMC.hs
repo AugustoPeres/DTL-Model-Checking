@@ -10,7 +10,7 @@ module BMC ( stateTranslation
 
 where
 
-import           Data.List   ((\\))
+import           Data.List   ((\\), intersect)
 import qualified Data.Set    as S
 import qualified DTLFormula  as DTL
 import qualified DTS         as T
@@ -158,7 +158,7 @@ translateFormula _ _ = undefined
 --          for which we are translating, the point x
 --          at where we are translating, and the bound k
 --   Translates the formula for that agent
-translateLocalFormula :: Show a =>
+translateLocalFormula :: (Show a, Eq a) =>
                          DTL.Agent ->
                          [[a]] ->
                          DTL.Formula ->
@@ -166,13 +166,44 @@ translateLocalFormula :: Show a =>
                          Int ->
                          Formula String
 translateLocalFormula i acts psi x k
-  | DTL.isPropSymbol psi  = makeVar psi x
-  | DTL.isLiteral psi     = Not $ makeVar (DTL.negateFormula psi) x
-  | DTL.isGlobally psi    = No
-  | DTL.isNext psi        = translateX i acts psi x k
+  | DTL.isPropSymbol psi    = makeVar psi x
+  | DTL.isLiteral psi       = Not $ makeVar (DTL.negateFormula psi) x
+  | DTL.isGlobally psi      = No
+  | DTL.isNext psi          = translateX i acts psi x k
+  | DTL.isCommunication psi = translateC i acts psi x k
 
 
-translateX :: Show a =>
+
+translateC :: (Show a, Eq a) =>
+              DTL.Agent ->
+              [[a]] ->
+              DTL.Formula ->
+              Int ->
+              Int ->
+              Formula String
+translateC i acts psi x k
+  | x == 0    = No
+  | otherwise =
+    foldr (\w y -> y :&&: (
+                          (
+                            (Not (makeActionOr actionsI (w+1) (x-1))) :&&:
+                            makeActionOr actionsI w w
+                          )
+                          :->:
+                          ( translateLocalFormula j acts tailF (w+1) k :&&:
+                            makeActionOr actionsJ w w
+                          )
+                          )
+          )
+          (makeActionOr actionsI 0 (x - 1))
+          [0..(x - 1)]
+  where actionsI = acts!!(i-1)
+        actionsJ = actionsI `intersect` (acts!!(j-1))
+        j        = DTL.communicationAgent psi
+        tailF    = DTL.tailFormula psi
+
+
+translateX :: (Show a, Eq a) =>
               DTL.Agent ->
               [[a]] ->
               DTL.Formula ->
