@@ -28,6 +28,7 @@ import qualified DTS                       as T
 import qualified GNBA                      as G
 import qualified NBA                       as N
 import System.Random
+import qualified BMC                       as B
 import qualified AutomataTheoreticApproach as A
 
 

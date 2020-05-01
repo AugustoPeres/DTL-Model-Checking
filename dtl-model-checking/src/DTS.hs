@@ -8,7 +8,8 @@ module DTS (DTS (..), getAllActions, getLabel, getAgents,
             fullSimplify, deleteUnreachableStates, shortestPath,
             shortestPathFromInitialState, shortestPathFromInitialStateList,
             subDTSWithInitialStates, empty, bfsWithStopCondition,
-            isReachableFromStates', getNeighboursByAction)
+            isReachableFromStates', getNeighboursByAction, getAllPropositionalSymbols,
+            getNeighboursWithActions)
 where
 
 import           CommonTypes
@@ -35,8 +36,6 @@ import           Utils         (bernoulli)
 -- labelingFunction is a mapping from states to a list of sets. Corresponding to each
 --                  local labeling function
 -- transitionRelation is a mapping from a state and an action to a different state.
---                    NOTE: this definition is assuming a deterministic approach to
---                          transition systems
 data DTS s i prop a = DTS {
                           states             :: S.Set s,
                           actions            :: M.Map i (S.Set a),
@@ -552,6 +551,20 @@ getNeighboursByAction dts state action =
   fromMaybe [] (transitionRelation dts M.!? (state, action))
 
 
+-- | Input: A DTS and a State
+--   Output: A list with the neighbours of that state
+--           the action that causes the transition
+getNeighboursWithActions :: (Ord s, Ord i, Ord a, Ord prop) =>
+                         DTS s i prop a ->
+                         s ->
+                         [(a, s)]
+getNeighboursWithActions dts s =
+  M.foldrWithKey (\k x y -> if fst k == s
+                   then y ++ foldr (\x' y' -> y' ++ [(snd k, x')]) [] x
+                   else y) [] tr
+  where tr = transitionRelation dts
+
+
 -- | Input: A DTS and a state.
 --   Output: A list with all the nodes directly acced from that node
 getNeighbours :: (Ord s , Ord i, Ord a, Ord prop) =>
@@ -595,6 +608,15 @@ getLabel dts state =
                  (labelingFunction dts)
 
 
+-- | Input: A DTS
+--   Output: All the propositional symbols in a concatened list
+getAllPropositionalSymbols :: (Ord s, Ord prop, Ord i, Ord a) =>
+                              DTS s i prop a ->
+                              [prop]
+getAllPropositionalSymbols dts =
+  foldr (\x y -> y ++ getPropSymbolsAgent dts x) [] (getAgents dts)
+
+
 -- | Input: A dts and an agent
 --   Output: A list with all the propositional symbols from that agent
 getPropSymbolsAgent :: (Ord i) =>
@@ -603,6 +625,8 @@ getPropSymbolsAgent :: (Ord i) =>
                        [prop]
 getPropSymbolsAgent dts agent =
   S.toList $ fromMaybe S.empty ((propSymbols dts) M.!? agent)
+
+
 -- | Input: A DTS
 --   Output: The agents of the system.
 --   NOTE: WE assume that the mappings in the system are complete, i.e,
@@ -614,7 +638,7 @@ getAgents dts = M.keys (propSymbols dts)
 
 
 -- -----------------------------------------------------------------------------
--- BEGIN: IO () Functions
+-- BEGIN: "Random" dts generation
 -- -----------------------------------------------------------------------------
 -- This contains IO fuctions used for example to read systems from input or to
 -- generate random transition systems
@@ -687,7 +711,7 @@ generateDTSFromStdGen n props actions stdgen p1 p2 =
 
 
 -- -----------------------------------------------------------------------------
--- END: IO () Functions
+-- END: "Random" DTS generation
 -- -----------------------------------------------------------------------------
 
 
