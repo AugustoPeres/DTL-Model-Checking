@@ -12,18 +12,28 @@ module DTLFormula
   , findInDepthForAgent
   , psiTest
   , isImplication
+  , isOr
+  , isAnd
   , isNegation
   , isNext
+  , isDualX
   , isGlobally
+  , isEventually
   , isCommunication
+  , isDualCom
   , isAtAgent
+  , isAtSomeAgent
   , isGlobal
   , isLocal
   , isLiteral
   , isPropSymbol
   , tailFormula
   , communicationAgent
+  , dualComAgent
+  , localAgent
   , getSubFormulasImplication
+  , getSubFormulasOr
+  , getSubFormulasAnd
   , PropSymbol
   , wrapGlobal
   , wrapLocal
@@ -37,14 +47,21 @@ type Agent = Int
 
 data LocalFormula = PropositionalSymbol PropSymbol
                   | Not LocalFormula
+                  | And LocalFormula LocalFormula
+                  | Or LocalFormula LocalFormula
                   | Next LocalFormula
+                  | N LocalFormula
                   | Globally LocalFormula
+                  | Eventually LocalFormula
                   | Comunicates Agent LocalFormula
+                  | DualCom Agent LocalFormula
                   | Implies LocalFormula LocalFormula
                     deriving (Eq, Ord)
 
 data GlobalFormula = Local Agent LocalFormula
                    | GNot GlobalFormula
+                   | GAnd GlobalFormula GlobalFormula
+                   | GOr GlobalFormula GlobalFormula
                    | GImplies GlobalFormula GlobalFormula
                      deriving (Eq, Ord)
 
@@ -55,13 +72,20 @@ instance Show LocalFormula
   where show (PropositionalSymbol a) = a -- no need to use show since this is already a string
         show (Implies a b)           = show a ++ " => " ++ show b
         show (Next a)                = "X(" ++ show a ++ ")"
+        show (N a)                   = "N(" ++ show a ++ ")"
+        show (And a b)               = show a ++ "/\\" ++ show b
+        show (Or a b)                = show a ++ "\\/" ++ show b
         show (Globally a)            = "G(" ++ show a ++ ")"
+        show (Eventually f)          = "F(" ++ show f ++ ")"
         show (Comunicates agent a)   = "c_" ++ show agent ++ "(" ++ show a ++ ")"
+        show (DualCom agent a)       = "xx_" ++ show agent ++ "(" ++ show a ++ ")"
         show (Not a)                 = "~(" ++ show a ++ ")"
 
 instance Show GlobalFormula
   where show (Local agent a) = "@_" ++ show agent ++ "[" ++ show a ++ "]"
         show (GNot a)        = "~(" ++ show a ++ ")"
+        show (GAnd a b)      = show a ++ "/\\" ++ show b
+        show (GOr a b)       = show a ++ "\\/" ++ show b
         show (GImplies a b)  = show a ++ " => " ++ show b
 
 instance Show Formula
@@ -75,7 +99,6 @@ wrapLocal f = FromLocal f
 -- Wraps a local formula
 wrapGlobal :: GlobalFormula -> Formula
 wrapGlobal f = FromGlobal f
-
 
 
 {-|
@@ -106,6 +129,9 @@ subFormulasAgent (Local i1 f) i2    = if i1 == i2
                                          else concatMap ( map FromLocal . (`localSubFormulas` i2) . fromJust) (filter isJust (findInDepthForAgent f i2))
 subFormulasAgent (GNot f) i         = subFormulasAgent f i
 subFormulasAgent (GImplies f1 f2) i = subFormulasAgent f1 i ++ subFormulasAgent f2 i
+subFormulasAgent (GOr _ _)        i = undefined -- leav this undefined
+subFormulasAgent (GAnd _ _)       i = undefined
+
 
 {-|
   'localSubFormulas' receives a local formula and an agent. It returns all the
@@ -120,6 +146,10 @@ localSubFormulas y@(Next f)              i = y : localSubFormulas f i
 localSubFormulas y@(Globally f)          i = y : localSubFormulas f i
 localSubFormulas y@(Comunicates _ f)     i = y : concatMap ((`localSubFormulas` i) . fromJust) (filter isJust (findInDepthForAgent f i))
 localSubFormulas y@(Not f)               i = y : localSubFormulas f i
+localSubFormulas (Or _ _)                _ = undefined --for now we leave this undefined
+localSubFormulas (And _ _)               _ = undefined
+localSubFormulas (Eventually _)          _ = undefined
+localSubFormulas (N _)                   _ = undefined
 
 {-|
   'findInDepthForAgent' receives an agent and a formula. It searches util it finds
@@ -134,6 +164,11 @@ findInDepthForAgent (Implies f1 f2) i         = findInDepthForAgent f1 i ++ find
 findInDepthForAgent (Not f) i                 = findInDepthForAgent f i
 findInDepthForAgent (Next f) i                = findInDepthForAgent f i
 findInDepthForAgent (Globally f) i            = findInDepthForAgent f i
+findInDepthForAgent (Or _ _) i                = undefined -- leave this undefined for now
+findInDepthForAgent (And _ _) i               = undefined
+findInDepthForAgent (Eventually _ ) i         = undefined
+findInDepthForAgent (N _) i                   = undefined
+findInDepthForAgent (DualCom _ _) i           = undefined
 
 {-|
   'globalSubFormulas' breaks down a global formula in all its sub formulas.
@@ -142,6 +177,9 @@ globalSubFormulas :: GlobalFormula -> [GlobalFormula]
 globalSubFormulas a@(Local _ _)    = [a]
 globalSubFormulas a@(GNot f)       = a : globalSubFormulas f
 globalSubFormulas a@(GImplies f g) = a : globalSubFormulas f ++ globalSubFormulas g
+globalSubFormulas (GAnd _ _)       = undefined -- we leave this undefined
+globalSubFormulas (GOr _ _)        = undefined
+
 
 {-|
   Checks if a formula is an implication
@@ -150,6 +188,20 @@ isImplication :: Formula -> Bool
 isImplication (FromLocal (Implies _ _))   = True
 isImplication (FromGlobal (GImplies _ _)) = True
 isImplication _                           = False
+
+isOr :: Formula -> Bool
+isOr (FromLocal (Or _ _))   = True
+isOr (FromGlobal (GOr _ _)) = True
+isOr _                      = False -- must change this when adding or to the global formulas
+
+isAnd :: Formula -> Bool
+isAnd (FromLocal (And _ _))   = True
+isAnd (FromGlobal (GAnd _ _)) = True
+isAnd _                       = False
+
+isEventually :: Formula -> Bool
+isEventually (FromLocal (Eventually _)) = True
+isEventually _                          = False
 
 isNegation :: Formula -> Bool
 isNegation (FromLocal (Not _))   = True
@@ -164,13 +216,26 @@ isNext :: Formula -> Bool
 isNext (FromLocal (Next _)) = True
 isNext _                    = False
 
+isDualX :: Formula -> Bool
+isDualX (FromLocal (N _)) = True
+isDualX _                 = False
+
 isCommunication :: Formula -> Bool
 isCommunication (FromLocal (Comunicates _ _)) = True
 isCommunication _                             = False
 
+isDualCom :: Formula -> Bool
+isDualCom (FromLocal (DualCom _ _)) = True
+isDualCom _                         = False
+
 isAtAgent :: Formula -> Agent -> Bool
 isAtAgent (FromGlobal (Local i' _)) i = i == i'
 isAtAgent _ _                         = False
+
+
+isAtSomeAgent :: Formula -> Bool
+isAtSomeAgent (FromGlobal (Local _ _)) = True
+isAtSomeAgent _                        = False
 
 isGlobal :: Formula -> Bool
 isGlobal (FromGlobal _) = True
@@ -189,12 +254,17 @@ isLiteral g@_                   = isPropSymbol g
 
 tailFormula :: Formula -> Formula -- returns the tail of a formula
 tailFormula (FromLocal (Implies _ _))           = undefined
+tailFormula (FromLocal (Or _ _))                = undefined
+tailFormula (FromLocal (And _ _))               = undefined
 tailFormula (FromGlobal (GImplies _ _))         = undefined
 tailFormula (FromLocal (PropositionalSymbol _)) = undefined
 tailFormula (FromLocal (Next f))                = FromLocal f
+tailFormula (FromLocal (N f))                   = FromLocal f
 tailFormula (FromLocal (Globally f))            = FromLocal f
+tailFormula (FromLocal (Eventually f))          = FromLocal f
 tailFormula (FromLocal (Not f))                 = FromLocal f
 tailFormula (FromLocal (Comunicates _ f))       = FromLocal f
+tailFormula (FromLocal (DualCom _ f))           = FromLocal f
 tailFormula (FromGlobal (Local _ f))            = FromLocal f
 tailFormula (FromGlobal (GNot f))               = FromGlobal f
 
@@ -203,12 +273,35 @@ communicationAgent :: Formula -> Agent
 communicationAgent (FromLocal (Comunicates i _)) = i
 communicationAgent _                             = undefined
 
+
+localAgent :: Formula -> Agent
+localAgent (FromGlobal (Local i _)) = i
+localAgent _                        = undefined
+
+-- return the communication agent in the dual formula
+dualComAgent :: Formula -> Agent
+dualComAgent (FromLocal (DualCom i _)) = i
+dualComAgent _                         = undefined
+
 -- | receives a formula psi1 => psi2 and returns
 --   [psi1, psi2].
 getSubFormulasImplication :: Formula -> [Formula]
 getSubFormulasImplication (FromLocal (Implies f1 f2))   = [FromLocal f1, FromLocal f2]
 getSubFormulasImplication (FromGlobal (GImplies f1 f2)) = [FromGlobal f1, FromGlobal f2]
 getSubFormulasImplication _ = undefined
+
+
+getSubFormulasOr :: Formula -> [Formula]
+getSubFormulasOr (FromLocal (Or f1 f2))   = [FromLocal f1, FromLocal f2]
+getSubFormulasOr (FromGlobal (GOr f1 f2)) = [FromGlobal f1, FromGlobal f2]
+getSubFormulasOr _                        = undefined -- must change here when adding globally
+
+
+getSubFormulasAnd :: Formula -> [Formula]
+getSubFormulasAnd (FromLocal (And f1 f2))   = [FromLocal f1, FromLocal f2]
+getSubFormulasAnd (FromGlobal (GAnd f1 f2))  = [FromGlobal f1 , FromGlobal f2]
+getSubFormulasAnd _                         = undefined -- must change here when adding globally
+
 
 psiTest :: LocalFormula
 psiTest = Implies (Globally (PropositionalSymbol "p") ) (Comunicates 2 (PropositionalSymbol "q"))

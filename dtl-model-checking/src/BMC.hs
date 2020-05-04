@@ -143,35 +143,113 @@ loopConditionTranslation dts k =
 -- BEGIN: Translation of formulas
 -- -----------------------------------------------------------------------------
 
--- | Input: A global formula, the actions of the agents
---   Output: The translation to SAT
-translateFormula :: Show a =>
-                    DTL.Formula ->
-                    [[a]] ->
+-- | Input: All the actions for the agent, a GlobaFormula,
+--          the point were we want to translate, the bound
+--   Output: The translation as described in my thesis
+translateFormula :: (Show a, Eq a) =>
+                    [[a]] ->             -- ^ the actions of the agents
+                    DTL.GlobalFormula -> -- ^ the global formula we are translating
+                    Int ->               -- ^ the point where we are translating
+                    Int ->               -- ^ the bound
                     Formula String
-translateFormula _ _ = undefined
+translateFormula acts psi x k =
+  translateFormulaHelper acts (DTL.wrapGlobal psi) x k
+
+-- | Input: All the actions for all the agents, a Formula,
+--          the point were we are translating and the bound
+--   Output: The translation to SAT
+translateFormulaHelper :: (Show a, Eq a) =>
+                          [[a]] ->
+                          DTL.Formula ->
+                          Int ->
+                          Int ->
+                          Formula String
+translateFormulaHelper acts psi x k
+  | DTL.isAtSomeAgent psi = translateLocalFormula agent acts tailF x k
+  | DTL.isOr psi          = translateFormulaHelper acts (tails1!!0) x k
+                            :||:
+                            translateFormulaHelper acts (tails1!!1) x k
+  | DTL.isAnd psi         = translateFormulaHelper acts (tails2!!0) x k
+                            :&&:
+                            translateFormulaHelper acts (tails2!!1) x k
+  | otherwise             = undefined
+  where tailF  = DTL.tailFormula psi
+        tails1 = DTL.getSubFormulasOr psi
+        tails2 = DTL.getSubFormulasAnd psi
+        agent  = DTL.localAgent psi
 
 
 -- translations for the local formulas
 
--- | Input: A formula, all the actions, the agent
---          for which we are translating, the point x
+-- | Input: The agent, all the actions, the formula that
+--          we are translating, the point x
 --          at where we are translating, and the bound k
 --   Translates the formula for that agent
 translateLocalFormula :: (Show a, Eq a) =>
-                         DTL.Agent ->
-                         [[a]] ->
-                         DTL.Formula ->
-                         Int ->
-                         Int ->
+                         DTL.Agent ->   -- ^ the agent for which we translate
+                         [[a]] ->       -- ^ list with the actions for all agents
+                         DTL.Formula -> -- ^ the formula we want to translate
+                         Int ->         -- ^ point were we are translating
+                         Int ->         -- ^ bound
                          Formula String
 translateLocalFormula i acts psi x k
+  | x > k                   = No -- just checking if we are inside the loop
   | DTL.isPropSymbol psi    = makeVar psi x
   | DTL.isLiteral psi       = Not $ makeVar (DTL.negateFormula psi) x
+  | DTL.isOr psi            = translateLocalFormula i acts ((DTL.getSubFormulasOr psi)!!0) x k
+                              :||:
+                              translateLocalFormula i acts ((DTL.getSubFormulasOr psi)!!1) x k
+  | DTL.isAnd psi           = translateLocalFormula i acts ((DTL.getSubFormulasAnd psi)!!0) x k
+                              :&&:
+                              translateLocalFormula i acts ((DTL.getSubFormulasAnd psi)!!1) x k
   | DTL.isGlobally psi      = No
+  | DTL.isEventually psi    = Some $
+                              map (\ w -> translateLocalFormula i acts (DTL.tailFormula psi) w k)
+                                  [x..k]
   | DTL.isNext psi          = translateX i acts psi x k
+  | DTL.isDualX psi         = translateX i acts psi x k -- translations are equal
   | DTL.isCommunication psi = translateC i acts psi x k
+  | DTL.isDualCom psi       = translateDualCom i acts psi x k
+  | otherwise               = undefined
 
+
+translateDualCom :: (Show a, Eq a) =>
+                    DTL.Agent ->
+                    [[a]] ->
+                    DTL.Formula ->
+                    Int ->
+                    Int ->
+                    Formula String
+translateDualCom i acts psi x k
+  | x == 0    = Yes
+  | otherwise =
+    (Not $ makeActionOr actionsI 0 (x-1))
+    :||:
+    (foldr (\w y -> y :&&:
+                    (
+                      ((Not $ makeActionOr actionsI (w+1) (x-1)) :&&:
+                       (makeActionOr actionsI w w))
+                      :->:
+                      (Not $ makeActionOr actionsJ w w)
+                     )
+           )
+           Yes
+          [0..(x-1)])
+    :||:
+    (foldr (\w y -> y :&&:
+                    (
+                      (Not $ makeActionOr actionsI (w+1) (x-1) :&&:
+                       (makeActionOr actionsI w w))
+                      :->:
+                      (translateLocalFormula j acts tailF (w+1) k)
+                    )
+           )
+           Yes
+           [0..(x-1)])
+  where actionsI = acts!!(i-1)
+        actionsJ = actionsI `intersect` (acts!!(j-1))
+        j        = DTL.dualComAgent psi
+        tailF    = DTL.tailFormula psi
 
 
 translateC :: (Show a, Eq a) =>

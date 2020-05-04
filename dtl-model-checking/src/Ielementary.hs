@@ -113,8 +113,8 @@ isLocallyConsistent set =
   all (\f -> not(isGlobally f) || tailFormula f `S.member` set) set
 
 
--- Input: A set of formulas and, closure and an agent
--- Output: True iff the set is i- consistent
+-- | Input: A set of formulas and, closure and an agent
+--   Output: True iff the set is i- consistent
 isIConsistent :: SOF ->
                  SOF ->
                  Agent ->
@@ -126,8 +126,8 @@ isIConsistent s clo i =
       (S.filter (`isAtAgent` i) clo)
 
 
--- Input: A Set of formulas and the closure of a given formula
--- Output: True iff the set is maximal
+-- | Input: A Set of formulas and the closure of a given formula
+--   Output: True iff the set is maximal
 isMaximal :: SOF -> -- the set we want to check
              SOF -> -- the closure of the formula
              Bool
