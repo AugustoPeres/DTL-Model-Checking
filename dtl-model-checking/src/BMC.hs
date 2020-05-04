@@ -6,7 +6,9 @@ module BMC ( stateTranslation
            , loopTranslation
            , loopConditionTranslation
            , translateFormula
-           , translateLocalFormula)
+           , translateLocalFormula
+           , translateLocalFormulaLoop
+           , translateFormulaLoop)
 
 where
 
@@ -193,7 +195,7 @@ translateLocalFormula :: (Show a, Eq a) =>
                          Int ->         -- ^ bound
                          Formula String
 translateLocalFormula i acts psi x k
-  | x > k                   = No -- just checking if we are inside the loop
+  | x > k                   = No -- just checking if we are inside the bound
   | DTL.isPropSymbol psi    = makeVar psi x
   | DTL.isLiteral psi       = Not $ makeVar (DTL.negateFormula psi) x
   | DTL.isOr psi            = translateLocalFormula i acts ((DTL.getSubFormulasOr psi)!!0) x k
@@ -289,7 +291,6 @@ translateX :: (Show a, Eq a) =>
               Int ->
               Formula String
 translateX i acts psi x k =
-  -- Now the series of implications --
   foldr (\w y -> y :&&: (
                          (
                            (Not $ makeActionOr actionsAgent x (w-1))
@@ -303,6 +304,109 @@ translateX i acts psi x k =
         [x..(k-1)]
   where actionsAgent = acts!!(i-1)
         tailF = DTL.tailFormula psi
+
+
+-- translating in loops
+
+translateFormulaLoop :: (Show a, Eq a) =>
+                        [[a]] ->       -- ^ list with all the actions for all agents
+                        DTL.GlobalFormula -> -- ^ the formula
+                        Int ->         -- ^ The point
+                        Int ->         -- ^ value of l
+                        Int ->         -- ^ bound
+                        Formula String
+translateFormulaLoop acts psi x l k =
+  translateFormulaLoopHelper acts (DTL.wrapGlobal psi) x l k
+
+
+-- | Input: All the actions for all the agents, a Formula,
+--          the point were we are translating, the value for l
+--          and the bound
+--   Output: The translation to SAT
+translateFormulaLoopHelper :: (Show a, Eq a) =>
+                              [[a]] ->       -- ^ list with all the actions for all agents
+                              DTL.Formula -> -- ^ the formula
+                              Int ->         -- ^ The point
+                              Int ->         -- ^ value of l
+                              Int ->         -- ^ bound
+                              Formula String
+translateFormulaLoopHelper acts psi x l k
+  | DTL.isAtSomeAgent psi = translateLocalFormulaLoop agent acts tailF x l k
+  | DTL.isOr psi          = translateFormulaLoopHelper acts (tails1!!0) x l k
+                            :||:
+                            translateFormulaLoopHelper acts (tails1!!1) x l k
+  | DTL.isAnd psi         = translateFormulaLoopHelper acts (tails2!!0) x l k
+                            :&&:
+                            translateFormulaLoopHelper acts (tails2!!1) x l k
+  | otherwise             = undefined
+  where tailF  = DTL.tailFormula psi
+        tails1 = DTL.getSubFormulasOr psi
+        tails2 = DTL.getSubFormulasAnd psi
+        agent  = DTL.localAgent psi
+
+
+-- | Input: An agent, all the actions of all agents, a DTL formula
+--          the point, the value of l, the bound
+--   Output: The translation of the formula.
+translateLocalFormulaLoop :: (Show a, Eq a) =>
+                            DTL.Agent ->   -- ^ the agent
+                            [[a]] ->       -- ^ all the actions
+                            DTL.Formula -> -- ^ the formula
+                            Int ->         -- ^ the point
+                            Int ->         -- ^ the value of l
+                            Int ->         -- ^ the bound
+                            Formula String
+translateLocalFormulaLoop i acts psi x l k
+  | x > k                   = No -- just checking if we are inside the loop
+  | DTL.isPropSymbol psi    = makeVar psi x
+  | DTL.isLiteral psi       = Not $ makeVar (DTL.negateFormula psi) x
+  | DTL.isOr psi            =
+    translateLocalFormulaLoop i acts ((DTL.getSubFormulasOr psi)!!0) x l k
+    :||:
+    translateLocalFormulaLoop i acts ((DTL.getSubFormulasOr psi)!!1) x l k
+  | DTL.isAnd psi           =
+    translateLocalFormulaLoop i acts ((DTL.getSubFormulasAnd psi)!!0) x l k
+    :&&:
+    translateLocalFormulaLoop i acts ((DTL.getSubFormulasAnd psi)!!1) x l k
+  | DTL.isGlobally psi      = translateGloop i acts psi x l k [x]
+  | DTL.isEventually psi    = translateFloop i acts psi x l k [x]
+  | otherwise               = undefined
+
+
+translateGloop :: (Show a, Eq a) =>
+                  DTL.Agent ->
+                  [[a]] ->
+                  DTL.Formula ->
+                  Int ->
+                  Int ->
+                  Int ->
+                  [Int] -> -- ^ the visited starting points.
+                  Formula String
+translateGloop i acts psi x l k visited =
+  if loopSucc l k x `elem` visited
+     then translateLocalFormulaLoop i acts tailF x l k
+     else translateLocalFormulaLoop i acts tailF x l k :&&:
+          translateGloop i acts psi (loopSucc l k x) l k (x:visited)
+  where tailF = DTL.tailFormula psi
+
+
+translateFloop :: (Show a, Eq a) =>
+                  DTL.Agent ->
+                  [[a]] ->
+                  DTL.Formula ->
+                  Int ->
+                  Int ->
+                  Int ->
+                  [Int] -> -- ^ the visited starting points.
+                  Formula String
+translateFloop i acts psi x l k visited =
+  if loopSucc l k x `elem` visited
+     then translateLocalFormulaLoop i acts tailF x l k
+     else translateLocalFormulaLoop i acts tailF x l k :||:
+          translateFloop i acts psi (loopSucc l k x) l k (x:visited)
+  where tailF = DTL.tailFormula psi
+
+
 -- -----------------------------------------------------------------------------
 -- END: Translation of formulas
 -- -----------------------------------------------------------------------------
@@ -324,3 +428,11 @@ makeActionOr acts x k =
                []
                acts
 
+-- | Gives me the successor of a (k, l)-loop
+loopSucc :: Int -> -- ^ the value of l
+            Int -> -- ^ the bound
+            Int -> -- ^ the point where I am
+            Int    -- ^ the returned value
+loopSucc l k x
+  | x == k    = l
+  | otherwise = x + 1
