@@ -370,7 +370,144 @@ translateLocalFormulaLoop i acts psi x l k
     translateLocalFormulaLoop i acts ((DTL.getSubFormulasAnd psi)!!1) x l k
   | DTL.isGlobally psi      = translateGloop i acts psi x l k [x]
   | DTL.isEventually psi    = translateFloop i acts psi x l k [x]
+  | DTL.isNext psi          = translateXloop i acts psi x l k
+  | DTL.isDualX psi         = translateNloop i acts psi x l k
+  | DTL.isCommunication psi = translateCloop i acts psi x l k
+  | DTL.isDualCom psi       = translateDualComloop i acts psi x l k
   | otherwise               = undefined
+
+
+translateDualComloop :: (Show a, Eq a) =>
+                        DTL.Agent ->
+                        [[a]] ->
+                        DTL.Formula ->
+                        Int ->
+                        Int ->
+                        Int ->
+                        Formula String
+translateDualComloop i acts psi x l k
+  | x == 0    = Yes
+  | otherwise =
+    (Not $ makeActionOr actionsI 0 (x-1))
+    :||:
+    (foldr (\w y -> y :&&:
+                    (
+                      ((Not $ makeActionOr actionsI (w+1) (x-1)) :&&:
+                       (makeActionOr actionsI w w))
+                      :->:
+                      (Not $ makeActionOr actionsJ w w)
+                     )
+           )
+           Yes
+          [0..(x-1)])
+    :||:
+    (foldr (\w y -> y :&&:
+                    (
+                      (Not $ makeActionOr actionsI (w+1) (x-1) :&&:
+                       (makeActionOr actionsI w w))
+                      :->:
+                      (translateLocalFormulaLoop j acts tailF (w+1) l k)
+                    )
+           )
+           Yes
+           [0..(x-1)])
+  where actionsI = acts!!(i-1)
+        actionsJ = actionsI `intersect` (acts!!(j-1))
+        j        = DTL.dualComAgent psi
+        tailF    = DTL.tailFormula psi
+
+
+translateCloop :: (Show a , Eq a) =>
+                  DTL.Agent ->
+                  [[a]] ->
+                  DTL.Formula ->
+                  Int ->
+                  Int ->
+                  Int ->
+                  Formula String
+translateCloop i acts psi x l k
+  | x == 0    = No
+  | otherwise =
+    foldr (\w y -> y :&&: (
+                          (
+                            (Not (makeActionOr actionsI (w+1) (x-1))) :&&:
+                            makeActionOr actionsI w w
+                          )
+                          :->:
+                          ( translateLocalFormulaLoop j acts tailF (w+1) l k :&&:
+                            makeActionOr actionsJ w w
+                          )
+                          )
+          )
+          (makeActionOr actionsI 0 (x - 1))
+          [0..(x - 1)]
+  where actionsI = acts!!(i-1)
+        actionsJ = actionsI `intersect` (acts!!(j-1))
+        j        = DTL.communicationAgent psi
+        tailF    = DTL.tailFormula psi
+
+
+translateNloop :: (Show a, Eq a) =>
+                  DTL.Agent ->
+                  [[a]] ->
+                  DTL.Formula ->
+                  Int ->
+                  Int ->
+                  Int ->
+                  Formula String
+translateNloop i acts psi x l k
+  | x <= l =
+    translateXloop i acts psi x l k
+    :||:
+    (Not $ makeActionOr actionsAgent x k)
+  | otherwise =
+    translateXloop i acts psi x l k
+    :||:
+    (Not $ makeActionOrList actionsAgent (map (succloop x) [0..n]))
+  where actionsAgent = acts!!(i-1)
+        n            = k - l
+        successor    = loopSucc l k
+        succloop x n = iterate successor x !! n
+
+
+translateXloop :: (Show a, Eq a) =>
+                  DTL.Agent ->
+                  [[a]] ->
+                  DTL.Formula ->
+                  Int ->
+                  Int ->
+                  Int ->
+                  Formula String
+translateXloop i acts psi x l k
+  | x <= l =
+    foldr (\w y -> y :&&: (
+                           (
+                             (Not $ makeActionOr actionsAgent x (w-1))
+                             :&&:
+                             makeActionOr actionsAgent w w
+                            )
+                           :->:
+                           translateLocalFormulaLoop i acts (tailF) (successor w) l k)
+           )
+          (makeActionOr actionsAgent x k)
+          [x..k]
+  | otherwise =
+    foldr (\w y -> y :&&: (
+                           (
+                             (Not $ makeActionOrList actionsAgent (map (succloop x) [0..(w-1)]) )
+                             :&&:
+                             makeActionOr actionsAgent (succloop x w) (succloop x w)
+                            )
+                           :->:
+                           translateLocalFormulaLoop i acts (tailF) (succloop x (w+1)) l k)
+           )
+          (makeActionOr actionsAgent l k)
+          [0..n]
+  where tailF        = DTL.tailFormula psi
+        actionsAgent = acts!!(i-1)
+        successor    = loopSucc l k
+        succloop x n = iterate successor x !! n
+        n            = k - l
 
 
 translateGloop :: (Show a, Eq a) =>
@@ -425,6 +562,15 @@ makeVar v x = Var $ show x ++ "_" ++ show v
 makeActionOr :: Show act => [act] -> Int -> Int -> Formula String
 makeActionOr acts x k =
   Some $ foldr (\action y -> y ++ map (makeVar action) [x..k])
+               []
+               acts
+
+-- makes a formula of the type OR(0_v1 ...) for a given
+-- list of variables and a list of indexes. The same as the
+-- the previous function but using a list instead of bounds
+makeActionOrList :: Show act => [act] -> [Int] -> Formula String
+makeActionOrList acts list =
+  Some $ foldr (\action y -> y ++ map (makeVar action) list)
                []
                acts
 
