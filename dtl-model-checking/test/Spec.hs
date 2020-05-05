@@ -139,8 +139,8 @@ main = hspec $ do
     it "Testing for t8States2Agents1 and formula @_1 [F (p1 /\\ ~p2)] with bound 2" $
       B.modelCheck t8States2Agents1 (F.Local 1 (F.Eventually(F.And (F.PropositionalSymbol "p1") (F.Not $ F.PropositionalSymbol "p2")))) 2 2 `shouldBe` False
 
-    it "Testing for t8StatesAgents1 and formula @_1[(~p1/\\~p2) => G ~(~p1 /\\ ~p1)] and bound 6" $
-      B.modelCheck t8States2Agents1 (F.Local 1 (F.Implies (F.And (F.Not $ F.PropositionalSymbol "p1") (F.Not $ F.PropositionalSymbol "p2")) (F.Globally (F.Or (F.PropositionalSymbol"p1") (F.PropositionalSymbol "p2"))))) 2 2 `shouldBe` True
+    it "Testing for t8StatesAgents1 and formula @_1[(~p1/\\~p2) => X G ~(~p1 /\\ ~p1)] and bound 6" $
+      B.modelCheck t8States2Agents1 (F.Local 1 (F.Implies (F.And (F.Not $ F.PropositionalSymbol "p1") (F.Not $ F.PropositionalSymbol "p2")) (F.Next $ F.Globally (F.Or (F.PropositionalSymbol"p1") (F.PropositionalSymbol "p2"))))) 2 6 `shouldBe` True
 
     it "testing for t8States2Agents4 and formula @_1[c_2[q_1]] => @_1[p1] with bound 0" $
       B.modelCheck t8States2Agents4 (F.GImplies (F.Local 1 (F.Comunicates 2 (F.PropositionalSymbol "q1"))) (F.Local 1 (F.PropositionalSymbol "p1"))) 2 0 `shouldBe` True
