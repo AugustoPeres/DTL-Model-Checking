@@ -37,6 +37,8 @@ module DTLFormula
   , PropSymbol
   , wrapGlobal
   , wrapLocal
+  , makeNNF
+  , negateGlobalFormula
   ) where
 
 import           Data.Maybe
@@ -99,6 +101,52 @@ wrapLocal f = FromLocal f
 -- Wraps a local formula
 wrapGlobal :: GlobalFormula -> Formula
 wrapGlobal f = FromGlobal f
+
+
+negateGlobalFormula :: GlobalFormula -> GlobalFormula
+negateGlobalFormula (GNot f) = f
+negateGlobalFormula f        = GNot f
+
+
+negateLocalFormula :: LocalFormula -> LocalFormula
+negateLocalFormula (Not f) = f
+negateLocalFormula f       = Not f
+
+-- | Input: A DTL GlobalFormula
+--   Output: That formula in NNF i.e, with negations only at the level
+--           of the propositional symbols.
+makeNNF :: GlobalFormula -> GlobalFormula
+makeNNF (Local i f)             = Local i (makeNNFlocal f)
+makeNNF (GNot (Local i f))      = makeNNF (Local i (negateLocalFormula f))
+makeNNF (GAnd f1 f2)            = GAnd (makeNNF f1) (makeNNF f2)
+makeNNF (GOr f1 f2)             = GOr (makeNNF f1) (makeNNF f2)
+makeNNF (GNot (GAnd f1 f2))     = GOr (makeNNF (negateGlobalFormula f1)) (makeNNF (negateGlobalFormula f2))
+makeNNF (GNot (GOr f1 f2))      = GAnd (makeNNF (negateGlobalFormula f1)) (makeNNF (negateGlobalFormula f2))
+makeNNF (GImplies f1 f2)        = GOr (makeNNF (negateGlobalFormula f1)) (makeNNF f2)
+makeNNF (GNot (GImplies f1 f2)) = GAnd (makeNNF f1) (makeNNF (negateGlobalFormula f2))
+
+
+makeNNFlocal :: LocalFormula -> LocalFormula
+makeNNFlocal (PropositionalSymbol p) = PropositionalSymbol p
+makeNNFlocal (Not (PropositionalSymbol p)) = Not $ PropositionalSymbol p
+makeNNFlocal (And f1 f2) = And (makeNNFlocal f1) (makeNNFlocal f2)
+makeNNFlocal (Not (And f1 f2)) = Or (makeNNFlocal (negateLocalFormula f1)) (makeNNFlocal (negateLocalFormula f2))
+makeNNFlocal (Or f1 f2) = Or (makeNNFlocal f1) (makeNNFlocal f2)
+makeNNFlocal (Not (Or f1 f2)) = And (makeNNFlocal (negateLocalFormula f1)) (makeNNFlocal (negateLocalFormula f2))
+makeNNFlocal (Next f) = Next (makeNNFlocal f)
+makeNNFlocal (Not (Next f)) = N (makeNNFlocal (negateLocalFormula f))
+makeNNFlocal (N f) = N (makeNNFlocal f)
+makeNNFlocal (Not (N f)) = Next (makeNNFlocal (negateLocalFormula f))
+makeNNFlocal (Globally f) = Globally (makeNNFlocal f)
+makeNNFlocal (Not (Globally f)) = Eventually (makeNNFlocal (negateLocalFormula f))
+makeNNFlocal (Eventually f) = Eventually (makeNNFlocal f)
+makeNNFlocal (Not (Eventually f)) = Globally (makeNNFlocal (negateLocalFormula f))
+makeNNFlocal (Comunicates i f) = Comunicates i (makeNNFlocal f)
+makeNNFlocal (Not (Comunicates i f)) = DualCom i (makeNNFlocal (negateLocalFormula f))
+makeNNFlocal (DualCom i f) = DualCom i (makeNNFlocal f)
+makeNNFlocal (Not (DualCom i f)) = Comunicates i (makeNNFlocal (negateLocalFormula f))
+makeNNFlocal (Implies f1 f2) = Or (makeNNFlocal (negateLocalFormula f1)) (makeNNFlocal f2)
+makeNNFlocal (Not (Implies f1 f2)) = And (makeNNFlocal f1) (makeNNFlocal (negateLocalFormula f2))
 
 
 {-|
@@ -299,7 +347,7 @@ getSubFormulasOr _                        = undefined -- must change here when a
 
 getSubFormulasAnd :: Formula -> [Formula]
 getSubFormulasAnd (FromLocal (And f1 f2))   = [FromLocal f1, FromLocal f2]
-getSubFormulasAnd (FromGlobal (GAnd f1 f2))  = [FromGlobal f1 , FromGlobal f2]
+getSubFormulasAnd (FromGlobal (GAnd f1 f2)) = [FromGlobal f1 , FromGlobal f2]
 getSubFormulasAnd _                         = undefined -- must change here when adding globally
 
 

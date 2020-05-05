@@ -8,25 +8,98 @@ module BMC ( stateTranslation
            , translateFormula
            , translateLocalFormula
            , translateLocalFormulaLoop
-           , translateFormulaLoop)
+           , translateFormulaLoop
+           , modelCheck
+           , encodeDTSWithFormula
+           , modelCheckWithCounterExample
+           , witnessTranslation
+           , witnessTranslationLoop)
 
 where
 
-import           Data.List   ((\\), intersect)
-import qualified Data.Set    as S
-import qualified DTLFormula  as DTL
-import qualified DTS         as T
+import           Data.List     (intersect, (\\))
+import qualified Data.Map.Lazy as M
+import qualified Data.Set      as S
+import qualified DTLFormula    as DTL
+import qualified DTS           as T
 import           SAT.MiniSat
 
 -- -----------------------------------------------------------------------------
 -- BEGIN: Description
 -- -----------------------------------------------------------------------------
 -- This module contains the sat reduction used in bounded model checking for DTL
-
+-- It also contains the model checking algorithm per say
 -- -----------------------------------------------------------------------------
 -- END: Description
 -- -----------------------------------------------------------------------------
 
+type Action = String
+
+-- -----------------------------------------------------------------------------
+-- BEGIN: The model checking algorithm and helper functions for it
+-- -----------------------------------------------------------------------------
+
+-- | Input: A distributed transition system with
+--            * Any type of states
+--            * Agents are the agents of the DTL package
+--            * Label are formulas (in practice they are literals)
+--          A dtl global formula, the number of agents and a bound
+--  Output: True iff until the given bound the formula holds
+modelCheckWithCounterExample :: (Ord s) =>
+                                T.DTS s DTL.Agent DTL.Formula Action ->
+                                DTL.GlobalFormula ->
+                                Int ->
+                                Int ->
+                                Maybe (M.Map String Bool)
+modelCheckWithCounterExample dts alpha n k =
+  solve $ encodeDTSWithFormula newDTS allActions notAlpha k
+  where allActions = map (T.getActionsAgent newDTS) [1..n]
+        notAlpha   = DTL.makeNNF $ DTL.negateGlobalFormula alpha
+        newDTS     = T.fullSimplify dts
+
+
+-- | Input: A distributed transition system with
+--            * Any type of states
+--            * Agents are the agents of the DTL package
+--            * Label are formulas (in practice they are literals)
+--          A dtl global formula, the number of agents and a bound
+--  Output: True iff until the given bound the formula holds
+modelCheck :: (Ord s) =>
+              T.DTS s DTL.Agent DTL.Formula Action ->
+              DTL.GlobalFormula ->
+              Int ->
+              Int ->
+              Bool
+modelCheck dts alpha n k =
+  not $ satisfiable $ encodeDTSWithFormula newDTS allActions notAlpha k
+  where allActions = map (T.getActionsAgent newDTS) [1..n]
+        notAlpha   = DTL.makeNNF $ DTL.negateGlobalFormula alpha
+        newDTS     = T.fullSimplify dts
+
+-- | Input: A distributed transition system with
+--            * Any type of states
+--            * Agents are the agents of the DTL package
+--            * Label are formulas (in practice they are literals)
+--          The actions, a dtl global formula, and a bound
+--  Output: The main formula of the model checking
+--          algorithm as described in my thesis
+encodeDTSWithFormula :: (Ord s) =>
+                        T.DTS s DTL.Agent DTL.Formula Action ->
+                        [[Action]] -> -- ^ lists with all the action of the agents
+                        DTL.GlobalFormula ->
+                        Int ->
+                        Formula String
+encodeDTSWithFormula dts acts alpha k =
+  dtsTranslation dts k
+  :&&:
+  (
+    ((Not $ loopConditionTranslation dts k):&&:(witnessTranslation acts alpha k)):||:
+    (Some $ map (\l -> loopTranslation dts l k :&&:
+                       witnessTranslationLoop acts alpha l k) [0..k])
+  )
+-- -----------------------------------------------------------------------------
+-- END: The model checking algorithm and helper functions for it
+-- -----------------------------------------------------------------------------
 
 
 -- -----------------------------------------------------------------------------
@@ -35,16 +108,19 @@ import           SAT.MiniSat
 
 -- | Input: A DTS and a bound
 --   Output: The encoded transition relation as a boolean formula
-dtsTranslation :: ( Ord s, Ord i, Ord prop , Ord a, Show prop, Show a) =>
+dtsTranslation :: (Ord s, Ord i, Ord prop , Ord a, Show prop, Show a) =>
                   T.DTS s i prop a ->
                   Int ->
                   Formula String
-dtsTranslation dts k =
-  initCondition :&&:
-  (All $ map (\x -> trTranslation dts x (x + 1)) [0..k]) :&&:
-  (All $ map (actionConditionTranslation dts) [0..k])
+dtsTranslation dts k
+  | k == 0   = initCondition
+  |otherwise =
+    initCondition :&&:
+    (All $ map (\x -> trTranslation dts x (x + 1)) [0..(k-1)]) :&&:
+    (All $ map (actionConditionTranslation dts) [0..(k-1)])
   where inits = S.toList $ T.initialStates dts
         initCondition = Some (map (stateTranslation dts 0) inits)
+
 
 -- | Input: A DTS, a value l and a value k
 --   Output: [[->]]_l^{k} encoded
@@ -145,8 +221,35 @@ loopConditionTranslation dts k =
 -- BEGIN: Translation of formulas
 -- -----------------------------------------------------------------------------
 
--- | Input: All the actions for the agent, a GlobaFormula,
---          the point were we want to translate, the bound
+-- | Input: All the actions for the agents, a GlobalFormula,
+--          the bound
+--   Output:  The witness translation for non k-loops
+witnessTranslation :: (Show a, Eq a) =>
+                      [[a]] ->
+                      DTL.GlobalFormula ->
+                      Int ->
+                      Formula String
+witnessTranslation acts psi k =
+  Some $
+  map (\x -> translateFormula acts psi x k) [0..k]
+
+
+-- | Input: All the actions for the agents, a GlobalFormula,
+--          the value of l and the bound
+--   Output:  The witness translation for non k-loops
+witnessTranslationLoop :: (Show a, Eq a) =>
+                          [[a]] ->
+                          DTL.GlobalFormula ->
+                          Int ->
+                          Int ->
+                          Formula String
+witnessTranslationLoop acts psi l k =
+  Some $
+  map (\x -> translateFormulaLoop acts psi x l k) [0..k]
+
+
+-- | Input: All the actions for the agents, a GlobaFormula,
+--          the point where we want to translate, the bound
 --   Output: The translation as described in my thesis
 translateFormula :: (Show a, Eq a) =>
                     [[a]] ->             -- ^ the actions of the agents
