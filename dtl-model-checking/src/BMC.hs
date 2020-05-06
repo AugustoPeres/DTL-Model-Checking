@@ -685,3 +685,20 @@ loopSucc :: Int -> -- ^ the value of l
 loopSucc l k x
   | x == k    = l
   | otherwise = x + 1
+
+-- | Gives the predecessor of a point in a (k, l)-loop
+loopPred :: Int -> -- ^ the value of l
+            Int -> -- ^ the bound
+            Int -> -- ^ the point
+            Int    -- ^ the returned value
+loopPred l k x
+  | x == l    = k
+  | otherwise = x - 1
+
+-- | Changes the counter in a loop
+loopIC :: Int -> -- ^ the value of l
+          Int -> -- ^ the value of k
+          Int -> -- ^ the current point
+          Int -> -- ^ the current counter
+          Int -> -- ^ the updated counter
+loopIC = undefined
