@@ -99,9 +99,13 @@ main = hspec $ do
     it "Testing for @_1[c_2[~q]], and the transition system tThesis" $
       B.modelCheck tThesis (F.Local 1 (F.Comunicates 2 (F.Not $ F.PropositionalSymbol "q"))) 2 1 `shouldBe` False
 
-    -- it "Testing for @_2[X X(c_1[p])], and the transition system tThesisComHolds" $
-    --   -- we add the operator next because no communication formula is valid in an initial state --
-    --   B.modelCheck tThesisComHolds (F.Local 2 (F.Next $ F.Next (F.Comunicates 1 (F.PropositionalSymbol "p")))) 2 4 `shouldBe` True
+    it "Testing for @_2[X X(c_1[p])], and the transition system tThesisComHolds" $
+      -- we add the operator next because no communication formula is valid in an initial state --
+      B.modelCheck tThesisComHolds (F.Local 2 (F.Next $ F.Next (F.Comunicates 1 (F.PropositionalSymbol "p")))) 2 1 `shouldBe` True
+
+    it "Testing for @_2[X(c_1[p])], and the transition system tThesisComHolds" $
+      -- we add the operator next because no communication formula is valid in an initial state --
+      B.modelCheck tThesisComHolds (F.Local 2 (F.Next (F.Comunicates 1 (F.PropositionalSymbol "p")))) 2 1 `shouldBe` True
 
     it "Testing for @_1[p] => @_2[X(X q)] and for transition system tThesisNextNext" $
       B.modelCheck tThesisNextNextWitness (F.GImplies (F.Local 1 (F.PropositionalSymbol "p")) (F.Local 2 (F.Next (F.Next $ F.PropositionalSymbol "q")))) 2 4 `shouldBe` True
@@ -131,7 +135,7 @@ main = hspec $ do
       B.modelCheck t8States2Agents4 (F.Local 1 (F.Implies (F.Not $ F.PropositionalSymbol "p1") (F.Globally (F.Eventually (F.Next $ F.PropositionalSymbol "p1"))))) 2 10 `shouldBe` True
 
     it "Testing for t8States2Agents1 and formula @_2[X (c_1[p2])]" $
-      B.modelCheck t8States2Agents1 (F.Local 2 (F.Next $ F.Comunicates 1 (F.PropositionalSymbol "p2"))) 2 6 `shouldBe` True
+      B.modelCheck t8States2Agents1 (F.Local 2 (F.Next $ F.Comunicates 1 (F.PropositionalSymbol "p2"))) 2 2 `shouldBe` True
 
     it "Testing for t8States2Agents1 and formula @_1 [F (p1 /\\ ~p2)] with bound 1" $
       B.modelCheck t8States2Agents1 (F.Local 1 (F.Eventually(F.And (F.PropositionalSymbol "p1") (F.Not $ F.PropositionalSymbol "p2")))) 2 1 `shouldBe` True
@@ -141,6 +145,10 @@ main = hspec $ do
 
     it "Testing for t8StatesAgents1 and formula @_1[(~p1/\\~p2) => X G ~(~p1 /\\ ~p1)] and bound 6" $
       B.modelCheck t8States2Agents1 (F.Local 1 (F.Implies (F.And (F.Not $ F.PropositionalSymbol "p1") (F.Not $ F.PropositionalSymbol "p2")) (F.Next $ F.Globally (F.Or (F.PropositionalSymbol"p1") (F.PropositionalSymbol "p2"))))) 2 6 `shouldBe` True
+
+    -- this witnesses the fact that there loops were agent 2 never takes any action
+    it "Testing for t8States2Agents4 and formula @_2[X(q1 \\/ ~q1)] and bound 1" $
+      B.modelCheck t8States2Agents4 (F.Local 2 (F.Next $ F.Or (F.Not $ F.PropositionalSymbol "q1") (F.PropositionalSymbol "q1"))) 2 1 `shouldBe` False
 
     it "testing for t8States2Agents4 and formula @_1[c_2[q_1]] => @_1[p1] with bound 0" $
       B.modelCheck t8States2Agents4 (F.GImplies (F.Local 1 (F.Comunicates 2 (F.PropositionalSymbol "q1"))) (F.Local 1 (F.PropositionalSymbol "p1"))) 2 0 `shouldBe` True

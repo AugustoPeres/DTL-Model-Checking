@@ -13,7 +13,9 @@ module BMC ( stateTranslation
            , encodeDTSWithFormula
            , modelCheckWithCounterExample
            , witnessTranslation
-           , witnessTranslationLoop)
+           , witnessTranslationLoop
+           , loopPred
+           )
 
 where
 
@@ -434,7 +436,8 @@ translateFormulaLoopHelper :: (Show a, Eq a) =>
                               Int ->         -- ^ bound
                               Formula String
 translateFormulaLoopHelper acts psi x l k
-  | DTL.isAtSomeAgent psi = translateLocalFormulaLoop agent acts tailF x l k
+  | x > k                 = No
+  | DTL.isAtSomeAgent psi = translateLocalFormulaLoop agent acts tailF x l k 0--must change this
   | DTL.isOr psi          = translateFormulaLoopHelper acts (tails1!!0) x l k
                             :||:
                             translateFormulaLoopHelper acts (tails1!!1) x l k
@@ -458,25 +461,26 @@ translateLocalFormulaLoop :: (Show a, Eq a) =>
                             Int ->         -- ^ the point
                             Int ->         -- ^ the value of l
                             Int ->         -- ^ the bound
+                            Int ->         -- ^ the loop counter
                             Formula String
-translateLocalFormulaLoop i acts psi x l k
+translateLocalFormulaLoop i acts psi x l k count
   | x > k                   = No -- just checking if we are inside the loop
   | DTL.isPropSymbol psi    = makeVar psi x
   | DTL.isLiteral psi       = Not $ makeVar (DTL.negateFormula psi) x
   | DTL.isOr psi            =
-    translateLocalFormulaLoop i acts ((DTL.getSubFormulasOr psi)!!0) x l k
+    translateLocalFormulaLoop i acts ((DTL.getSubFormulasOr psi)!!0) x l k count
     :||:
-    translateLocalFormulaLoop i acts ((DTL.getSubFormulasOr psi)!!1) x l k
+    translateLocalFormulaLoop i acts ((DTL.getSubFormulasOr psi)!!1) x l k count
   | DTL.isAnd psi           =
-    translateLocalFormulaLoop i acts ((DTL.getSubFormulasAnd psi)!!0) x l k
+    translateLocalFormulaLoop i acts ((DTL.getSubFormulasAnd psi)!!0) x l k count
     :&&:
-    translateLocalFormulaLoop i acts ((DTL.getSubFormulasAnd psi)!!1) x l k
-  | DTL.isGlobally psi      = translateGloop i acts psi x l k [x]
-  | DTL.isEventually psi    = translateFloop i acts psi x l k [x]
-  | DTL.isNext psi          = translateXloop i acts psi x l k
-  | DTL.isDualX psi         = translateNloop i acts psi x l k
-  | DTL.isCommunication psi = translateCloop i acts psi x l k
-  | DTL.isDualCom psi       = translateDualComloop i acts psi x l k
+    translateLocalFormulaLoop i acts ((DTL.getSubFormulasAnd psi)!!1) x l k count
+  | DTL.isGlobally psi      = translateGloop i acts psi x l k [x] count
+  | DTL.isEventually psi    = translateFloop i acts psi x l k [x] count
+  | DTL.isNext psi          = translateXloop i acts psi x l k count
+  | DTL.isDualX psi         = translateNloop i acts psi x l k count
+  | DTL.isCommunication psi = translateCloop i acts psi x l k count
+  | DTL.isDualCom psi       = translateDualComloop i acts psi x l k count
   | otherwise               = undefined
 
 
@@ -487,10 +491,11 @@ translateDualComloop :: (Show a, Eq a) =>
                         Int ->
                         Int ->
                         Int ->
+                        Int -> -- loop counter
                         Formula String
-translateDualComloop i acts psi x l k
-  | x == 0    = Yes
-  | otherwise =
+translateDualComloop i acts psi x l k count
+  | x == 0 && count == 0 = Yes
+  | x /= 0 && count == 0 =
     (Not $ makeActionOr actionsI 0 (x-1))
     :||:
     (foldr (\w y -> y :&&:
@@ -509,15 +514,50 @@ translateDualComloop i acts psi x l k
                       (Not $ makeActionOr actionsI (w+1) (x-1) :&&:
                        (makeActionOr actionsI w w))
                       :->:
-                      (translateLocalFormulaLoop j acts tailF (w+1) l k)
+                      (translateLocalFormulaLoop j acts tailF (w+1) l k count)
                     )
            )
            Yes
            [0..(x-1)])
-  where actionsI = acts!!(i-1)
-        actionsJ = actionsI `intersect` (acts!!(j-1))
-        j        = DTL.dualComAgent psi
-        tailF    = DTL.tailFormula psi
+  | count > 0 =
+    (Not $ makeActionOr actionsI 0 k) -- no actions of the agent
+    :||:
+    -- the last action of i is not an action of j
+    foldr (\w y -> y :&&:
+                   (
+                     (Not (makeActionOrList actionsI (take w sequenceOfActions)))
+                      :&&:
+                     makeActionOrList actionsI [sequenceOfActions!!w]
+                     :->:
+                     Not (makeActionOrList actionsJ [sequenceOfActions!!w])
+                   )
+          )
+          Yes
+          [0..(x-l+k)]
+    :||:
+    -- the next formula holds for the last action --
+    foldr (\w y -> y :&&: (
+                           (
+                             (Not (makeActionOrList actionsI (take w sequenceOfActions)))
+                             :&&:
+                             makeActionOrList actionsI [sequenceOfActions!!w])
+                           :->:
+                           if snd (sequence!!w) == 0
+                              then translateLocalFormulaLoop j acts tailF (sequenceOfStates!!w) l k (count-1)
+                              else translateLocalFormulaLoop j acts tailF (sequenceOfStates!!w) l k count
+                           )
+          )
+          Yes
+          [0..(x-l+k)]
+  | otherwise = undefined
+  where actionsI            = acts!!(i-1)
+        actionsJ            = actionsI `intersect` (acts!!(j-1))
+        j                   = DTL.dualComAgent psi
+        tailF               = DTL.tailFormula psi
+        predsecc     (x, c) = loopPred l k (x, c)
+        sequence            = take (x-l+k+2) $ iterate predsecc (x, 1)
+        sequenceOfStates    = map fst (init sequence)
+        sequenceOfActions   = map fst (tail sequence)
 
 
 translateCloop :: (Show a , Eq a) =>
@@ -527,27 +567,50 @@ translateCloop :: (Show a , Eq a) =>
                   Int ->
                   Int ->
                   Int ->
+                  Int -> -- loop counter
                   Formula String
-translateCloop i acts psi x l k
-  | x == 0    = No
-  | otherwise =
+translateCloop i acts psi x l k count
+  | x == 0 && count == 0 = No
+  | x /= 0 && count == 0 =
     foldr (\w y -> y :&&: (
                           (
                             (Not (makeActionOr actionsI (w+1) (x-1))) :&&:
                             makeActionOr actionsI w w
                           )
                           :->:
-                          ( translateLocalFormulaLoop j acts tailF (w+1) l k :&&:
+                          ( translateLocalFormulaLoop j acts tailF (w+1) l k count :&&:
                             makeActionOr actionsJ w w
                           )
                           )
           )
           (makeActionOr actionsI 0 (x - 1))
           [0..(x - 1)]
-  where actionsI = acts!!(i-1)
-        actionsJ = actionsI `intersect` (acts!!(j-1))
-        j        = DTL.communicationAgent psi
-        tailF    = DTL.tailFormula psi
+  | count > 0 && x >= l =
+    foldr (\w y -> y :&&: (
+                           (
+                             (Not (makeActionOrList actionsI (take w sequenceOfActions)))
+                             :&&:
+                             makeActionOrList actionsI [sequenceOfActions!!w]
+                            )
+                           :->:
+                           if snd (sequence!!w) == 0
+                              then translateLocalFormulaLoop j acts tailF (sequenceOfStates!!w) l k (count-1) :&&:
+                                   makeActionOrList actionsJ [sequenceOfActions!!w]
+                              else translateLocalFormulaLoop j acts tailF (sequenceOfStates!!w) l k count :&&:
+                                   makeActionOrList actionsJ [sequenceOfActions!!w]
+                          )
+          )
+          (makeActionOrList actionsI sequenceOfActions)
+          [0..(x-l+k)]
+  | otherwise = undefined -- if the counter is greater than zero we must be inside the loop
+  where actionsI            = acts!!(i-1)
+        actionsJ            = actionsI `intersect` (acts!!(j-1))
+        j                   = DTL.communicationAgent psi
+        tailF               = DTL.tailFormula psi
+        predsecc     (x, c) = loopPred l k (x, c)
+        sequence            = take (x-l+k+2) $ iterate predsecc (x, 1)
+        sequenceOfStates    = map fst (init sequence)
+        sequenceOfActions   = map fst (tail sequence)
 
 
 translateNloop :: (Show a, Eq a) =>
@@ -557,14 +620,15 @@ translateNloop :: (Show a, Eq a) =>
                   Int ->
                   Int ->
                   Int ->
+                  Int -> -- loop counter
                   Formula String
-translateNloop i acts psi x l k
+translateNloop i acts psi x l k count
   | x <= l =
-    translateXloop i acts psi x l k
+    translateXloop i acts psi x l k count
     :||:
     (Not $ makeActionOr actionsAgent x k)
   | otherwise =
-    translateXloop i acts psi x l k
+    translateXloop i acts psi x l k count
     :||:
     (Not $ makeActionOrList actionsAgent (map (succloop x) [0..n]))
   where actionsAgent = acts!!(i-1)
@@ -580,8 +644,9 @@ translateXloop :: (Show a, Eq a) =>
                   Int ->
                   Int ->
                   Int ->
+                  Int -> -- counter
                   Formula String
-translateXloop i acts psi x l k
+translateXloop i acts psi x l k count
   | x <= l =
     foldr (\w y -> y :&&: (
                            (
@@ -590,7 +655,9 @@ translateXloop i acts psi x l k
                              makeActionOr actionsAgent w w
                             )
                            :->:
-                           translateLocalFormulaLoop i acts (tailF) (successor w) l k)
+                           if w == k -- caso em que completamos uma volta
+                              then translateLocalFormulaLoop i acts (tailF) (successor w) l k (count+1)
+                              else translateLocalFormulaLoop i acts (tailF) (successor w) l k count)
            )
           (makeActionOr actionsAgent x k)
           [x..k]
@@ -602,7 +669,9 @@ translateXloop i acts psi x l k
                              makeActionOr actionsAgent (succloop x w) (succloop x w)
                             )
                            :->:
-                           translateLocalFormulaLoop i acts (tailF) (succloop x (w+1)) l k)
+                           if succloop x (w+1) > x
+                              then translateLocalFormulaLoop i acts (tailF) (succloop x (w+1)) l k count
+                              else translateLocalFormulaLoop i acts (tailF) (succloop x (w+1)) l k (count+1))
            )
           (makeActionOr actionsAgent l k)
           [0..n]
@@ -621,13 +690,21 @@ translateGloop :: (Show a, Eq a) =>
                   Int ->
                   Int ->
                   [Int] -> -- ^ the visited starting points.
+                  Int -> -- loop counter
                   Formula String
-translateGloop i acts psi x l k visited =
-  if loopSucc l k x `elem` visited
-     then translateLocalFormulaLoop i acts tailF x l k
-     else translateLocalFormulaLoop i acts tailF x l k :&&:
-          translateGloop i acts psi (loopSucc l k x) l k (x:visited)
+translateGloop i acts psi x l k visited counter
+  | succc > x =
+    if succc `elem` visited
+       then translateLocalFormulaLoop i acts tailF x l k counter
+       else translateLocalFormulaLoop i acts tailF x l k counter :&&:
+            translateGloop i acts psi (succc) l k (x:visited) counter
+  | otherwise =
+    if succc `elem` visited
+       then translateLocalFormulaLoop i acts tailF x l k counter
+       else translateLocalFormulaLoop i acts tailF x l k counter :&&:
+            translateGloop i acts psi (succc) l k (x:visited) (counter+1)
   where tailF = DTL.tailFormula psi
+        succc = loopSucc l k x
 
 
 translateFloop :: (Show a, Eq a) =>
@@ -638,13 +715,21 @@ translateFloop :: (Show a, Eq a) =>
                   Int ->
                   Int ->
                   [Int] -> -- ^ the visited starting points.
+                  Int -> -- loop counter
                   Formula String
-translateFloop i acts psi x l k visited =
-  if loopSucc l k x `elem` visited
-     then translateLocalFormulaLoop i acts tailF x l k
-     else translateLocalFormulaLoop i acts tailF x l k :||:
-          translateFloop i acts psi (loopSucc l k x) l k (x:visited)
+translateFloop i acts psi x l k visited counter
+  | succc > x =
+    if succc `elem` visited
+       then translateLocalFormulaLoop i acts tailF x l k counter
+       else translateLocalFormulaLoop i acts tailF x l k counter :||:
+            translateFloop i acts psi (succc) l k (x:visited) counter
+  |otherwise =
+    if succc `elem` visited
+       then translateLocalFormulaLoop i acts tailF x l k counter
+       else translateLocalFormulaLoop i acts tailF x l k counter :||:
+            translateFloop i acts psi (succc) l k (x:visited) (counter+1)
   where tailF = DTL.tailFormula psi
+        succc = loopSucc l k x
 
 
 -- -----------------------------------------------------------------------------
@@ -689,16 +774,15 @@ loopSucc l k x
 -- | Gives the predecessor of a point in a (k, l)-loop
 loopPred :: Int -> -- ^ the value of l
             Int -> -- ^ the bound
-            Int -> -- ^ the point
-            Int    -- ^ the returned value
-loopPred l k x
-  | x == l    = k
-  | otherwise = x - 1
+            (Int, Int) -> -- ^ the current point with the loop counter
+            (Int, Int)    -- ^ the predecessor with the current value
+loopPred l k (x, counter)
+  | counter == 0 =
+    if x > 0
+       then (x - 1, 0)
+       else (0, 0)
+  | counter > 0 =
+    if x == l
+       then (k, counter - 1)
+       else (x - 1, counter)
 
--- | Changes the counter in a loop
-loopIC :: Int -> -- ^ the value of l
-          Int -> -- ^ the value of k
-          Int -> -- ^ the current point
-          Int -> -- ^ the current counter
-          Int -> -- ^ the updated counter
-loopIC = undefined
