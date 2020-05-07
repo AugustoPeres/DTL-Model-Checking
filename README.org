@@ -789,7 +789,9 @@
      Greatly improved the formula for which the automaton can be reduced.
 
 **** TODO Make the function to return just one counterexample.
-     Do this by returning the shortest path from any initial state to that state
+     Do this by returning the shortest path from any initial state to the state
+     that must be fair and then concatenate that path with the path from the
+     fair state to itself.
      and then the shortest path from that state to itself.
 
 **** TODO When converting GNBA -> NBA.

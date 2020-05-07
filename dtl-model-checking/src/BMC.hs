@@ -119,7 +119,7 @@ dtsTranslation dts k
   |otherwise =
     initCondition :&&:
     (All $ map (\x -> trTranslation dts x (x + 1)) [0..(k-1)]) :&&:
-    (All $ map (actionConditionTranslation dts) [0..(k-1)])
+    (All $ map (actionConditionTranslation dts) [0..k])
   where inits = S.toList $ T.initialStates dts
         initCondition = Some (map (stateTranslation dts 0) inits)
 

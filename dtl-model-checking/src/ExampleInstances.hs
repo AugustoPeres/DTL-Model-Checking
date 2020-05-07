@@ -7,7 +7,9 @@ module ExampleInstances
     -- exporting transition systems --
     oneAgent1,
     t8States2Agents1, t8States2Agents2,
-    t8States2Agents3, t8States2Agents4, t16States2Agents1, t16States2Agents2,
+    t8States2Agents3, t8States2Agents4, t8States2Agents5, t8States2Agents6,
+    t8States2Agents7, t8States2Agents8, t8States2Agents9, t8States2Agents10,
+    t16States2Agents1, t16States2Agents2,
     t16States2Agents3, t16States2Agents4, t32States2Agents1, t32States2Agents2,
     t64States2Agents1, t64States2Agents2, t128States2Agents1, t128States2Agents2,
     t256States2Agents1, t256States2Agents2, t512States2Agents1, t512States2Agents2,
@@ -143,6 +145,71 @@ t8States2Agents4 = T.generateDTSFromStdGen 2
                                            ]
                                            [["a", "b"], ["a", "c"]]
                                            (mkStdGen 4)
+                                           0.1
+                                           0.1
+
+t8States2Agents5 :: T.DTS Int Int F.Formula String
+t8States2Agents5 = T.generateDTSFromStdGen 2
+                                           [
+                                             [F.FromLocal $ F.PropositionalSymbol "p1", F.FromLocal $ F.PropositionalSymbol "p2"],
+                                             [F.FromLocal $ F.PropositionalSymbol "q1"]
+                                           ]
+                                           [["a", "b"], ["a", "c"]]
+                                           (mkStdGen 5)
+                                           0.1
+                                           0.1
+
+t8States2Agents6 :: T.DTS Int Int F.Formula String
+t8States2Agents6 = T.generateDTSFromStdGen 2
+                                           [
+                                             [F.FromLocal $ F.PropositionalSymbol "p1", F.FromLocal $ F.PropositionalSymbol "p2"],
+                                             [F.FromLocal $ F.PropositionalSymbol "q1"]
+                                           ]
+                                           [["a", "b"], ["a", "c"]]
+                                           (mkStdGen 6)
+                                           0.1
+                                           0.1
+
+t8States2Agents7 :: T.DTS Int Int F.Formula String
+t8States2Agents7 = T.generateDTSFromStdGen 2
+                                           [
+                                             [F.FromLocal $ F.PropositionalSymbol "p1", F.FromLocal $ F.PropositionalSymbol "p2"],
+                                             [F.FromLocal $ F.PropositionalSymbol "q1"]
+                                           ]
+                                           [["a", "b"], ["a", "c"]]
+                                           (mkStdGen 7)
+                                           0.1
+                                           0.1
+
+t8States2Agents8 :: T.DTS Int Int F.Formula String
+t8States2Agents8 = T.generateDTSFromStdGen 2
+                                           [
+                                             [F.FromLocal $ F.PropositionalSymbol "p1", F.FromLocal $ F.PropositionalSymbol "p2"],
+                                             [F.FromLocal $ F.PropositionalSymbol "q1"]
+                                           ]
+                                           [["a", "b"], ["a", "c"]]
+                                          (mkStdGen 8)
+                                           0.1
+                                           0.1
+
+t8States2Agents9 :: T.DTS Int Int F.Formula String
+t8States2Agents9 = T.generateDTSFromStdGen 2
+                                           [
+                                             [F.FromLocal $ F.PropositionalSymbol "p1", F.FromLocal $ F.PropositionalSymbol "p2"],
+                                             [F.FromLocal $ F.PropositionalSymbol "q1"]
+                                           ]
+                                           [["a", "b"], ["a", "c"]]
+                                           (mkStdGen 9)
+                                           0.1
+                                           0.1
+t8States2Agents10 :: T.DTS Int Int F.Formula String
+t8States2Agents10 = T.generateDTSFromStdGen 2
+                                           [
+                                             [F.FromLocal $ F.PropositionalSymbol "p1", F.FromLocal $ F.PropositionalSymbol "p2"],
+                                             [F.FromLocal $ F.PropositionalSymbol "q1"]
+                                           ]
+                                           [["a", "b"], ["a", "c"]]
+                                           (mkStdGen 10)
                                            0.1
                                            0.1
 -- end of transition systems with 8 states --
