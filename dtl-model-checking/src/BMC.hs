@@ -1,3 +1,5 @@
+{-# LANGUAGE FlexibleInstances    #-}
+{-# LANGUAGE TypeSynonymInstances #-}
 module BMC ( stateTranslation
            , dtsTranslation
            , trTranslation
@@ -25,6 +27,7 @@ import qualified Data.Set      as S
 import qualified DTLFormula    as DTL
 import qualified DTS           as T
 import           SAT.MiniSat
+import Data.Maybe
 
 -- -----------------------------------------------------------------------------
 -- BEGIN: Description
@@ -36,7 +39,6 @@ import           SAT.MiniSat
 -- -----------------------------------------------------------------------------
 
 type Action = String
-
 -- -----------------------------------------------------------------------------
 -- BEGIN: The model checking algorithm and helper functions for it
 -- -----------------------------------------------------------------------------
@@ -785,4 +787,16 @@ loopPred l k (x, counter)
     if x == l
        then (k, counter - 1)
        else (x - 1, counter)
+
+
+-- -- | Parses the solution of the Sat Solver into nothing
+-- --   or a transition system which the only path is the counter example.
+-- parseSolution :: Maybe (M.Map String Bool) ->
+--                  T.DTS s DTL.Agent DTL.Formula Action ->
+--                  Maybe ([(s, Action)], T.DTS Int Int DTL.Formula Action)
+-- parseSolution sol dts
+--   | isNothing sol = Nothing
+--   | otherwise     = undefined
+
+
 

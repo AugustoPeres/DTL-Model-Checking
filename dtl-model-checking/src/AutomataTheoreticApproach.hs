@@ -2,7 +2,8 @@
 {-# LANGUAGE TypeSynonymInstances #-}
 module AutomataTheoreticApproach (AutomataCounterExample(..),
                                   modelCheck, modelCheckWithCounterExamples, makeComplementaryGNBA,
-                                  convertGNBAToNBA, dotProductParticullarCase)
+                                  convertGNBAToNBA, dotProductParticullarCase,
+                                  modelCheckOneCounterExample)
   where
 
 import           CommonTypes
@@ -125,6 +126,38 @@ modelCheckWithCounterExamples dts alpha n =
           where exemp = T.subDTSWithInitialStates tDotnbaComp x
 
 
+-- | Input: A transition system, A DTL formula and an integer
+--   Output: A model checking solution with just one counter example
+--           This counter example consists of the first scc with a final state.
+--           Then we output the path from an initial state to that state and the
+--           shortest path from that node to itself.
+modelCheckOneCounterExample :: Ord s =>
+                               T.DTS s Int F.Formula Action ->
+                               F.GlobalFormula ->
+                               Int ->
+                               ModelCheckingAnswer ([(s, N.State)], [(s, N.State)])
+modelCheckOneCounterExample dts alpha n =
+  go (S.toList persStates)
+  where gComp = makeComplementaryGNBA alpha n actions
+        actions = map (T.getActionsAgent dts) [1..n]
+        -- now we convert to a NBA --
+        nbaComp = N.fullSimplify $ convertGNBAToNBA gComp (G.getAlphabet gComp)
+        fs = N.finalStates nbaComp
+        -- now we make the dot product and then remove irrelevant states --
+        clo = F.closureFormula alpha n
+        tDotnbaComp = T.fullSimplify $
+                      dotProductParticullarCase (T.fullSimplify dts) nbaComp clo
+        -- now the states that we are interested for the persistence --
+        persStates = S.filter (\x -> (head $ T.getLabel tDotnbaComp x) `elem` fs)
+                              (T.states tDotnbaComp)
+        go [] = Satisfies
+        go (state:xs) =
+          if isNothing path1
+          then go xs
+          else CounterExample (fromJust $ T.shortestPathFromInitialState tDotnbaComp state, fromJust path1)
+          where path1 = T.shortestPath tDotnbaComp state state
+
+
 -- | Input: A transition system, a DTL formula and an integer.
 --   Output: Yes iff the transition system satisfies the formula
 --   This is the MAIN function on the module.
@@ -146,10 +179,6 @@ modelCheck :: Ord s =>
 modelCheck dts alpha n =
   not $
     any (\x -> T.isReachableFromStates' tDotnbaComp x [x]) persStates
-    -- any (\x -> any (\comp -> x `elem` comp &&
-    --                          any (\y -> y `elem` T.getNeighbours tDotnbaComp x) comp)
-    --                scc)
-    --     persStates
   where gComp = makeComplementaryGNBA alpha n actions
         actions = map (T.getActionsAgent dts) [1..n]
         -- now we convert to a NBA --

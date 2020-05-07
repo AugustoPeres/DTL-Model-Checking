@@ -67,14 +67,18 @@ main = hspec $ do
 
   -- some test instances on our random transition systems --
   describe "Test instances on \"randomly\" generated transition systems" $ do
-    it "Testing for t8States2Agents1 and formula @_1[p1] /\\ @_2[q1]" $
+
+    it "Testing for t8States2Agents1 and formula @_1[p1] => ~@_2[q1]" $
       modelCheck t8States2Agents1 (F.GNot (F.GImplies (F.Local 1 (F.PropositionalSymbol "p1")) (F.GNot $ F.Local 2 (F.PropositionalSymbol "q1")))) 2 `shouldBe` False
+
     it "Testing for t8States2Agents1 and formula @_2[X (c_1[p2])]" $
       modelCheck t8States2Agents1 (F.Local 2 (F.Next $ F.Comunicates 1 (F.PropositionalSymbol "p2"))) 2 `shouldBe` True
     it "testing for t8States2Agents4 and formula @_1[c_2[q_1]] => @_1[~p1=>p2]" $
       modelCheck t8States2Agents4 (F.GImplies (F.Local 1 (F.Comunicates 2 (F.PropositionalSymbol "q1"))) (F.Local 1 (F.Implies (F.Not $ F.PropositionalSymbol "p1") (F.PropositionalSymbol "p2")))) 2 `shouldBe` True
+
     it "testing for t8States2Agents4 and formula @_1[c_2[q_1]] => @_1[p1]" $
       modelCheck t8States2Agents4 (F.GImplies (F.Local 1 (F.Comunicates 2 (F.PropositionalSymbol "q1"))) (F.Local 1 (F.PropositionalSymbol "p1"))) 2 `shouldBe` False
+
     it "testing for t8States2Agents4 and formula @_1[c_2[q_1]] => @_1[p2]" $
       modelCheck t8States2Agents4 (F.GImplies (F.Local 1 (F.Comunicates 2 (F.PropositionalSymbol "q1"))) (F.Local 1 (F.PropositionalSymbol "p2"))) 2 `shouldBe` False
 
