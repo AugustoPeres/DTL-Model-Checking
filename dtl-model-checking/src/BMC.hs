@@ -16,7 +16,6 @@ module BMC ( stateTranslation
            , modelCheckWithCounterExample
            , witnessTranslation
            , witnessTranslationLoop
-           , loopPred
            )
 
 where
@@ -532,6 +531,7 @@ translateDualComloop i acts psi x l k
         rho'     = rho k l (DTL.majorationPTH tailF)
         times    = makeIndexesForBackCom l k x
 
+
 translateCloop :: (Show a , Eq a) =>
                   DTL.Agent ->
                   [[a]] ->
@@ -734,40 +734,3 @@ makeActionOrList acts list =
   Some $ foldr (\action y -> y ++ map (makeVar action) list)
                []
                acts
-
--- | Gives me the successor of a (k, l)-loop
-loopSucc :: Int -> -- ^ the value of l
-            Int -> -- ^ the bound
-            Int -> -- ^ the point where I am
-            Int    -- ^ the returned value
-loopSucc l k x
-  | x == k    = l
-  | otherwise = x + 1
-
--- | Gives the predecessor of a point in a (k, l)-loop
-loopPred :: Int -> -- ^ the value of l
-            Int -> -- ^ the bound
-            (Int, Int) -> -- ^ the current point with the loop counter
-            (Int, Int)    -- ^ the predecessor with the current value
-loopPred l k (x, counter)
-  | counter == 0 =
-    if x > 0
-       then (x - 1, 0)
-       else (0, 0)
-  | counter > 0 =
-    if x == l
-       then (k, counter - 1)
-       else (x - 1, counter)
-
-
--- -- | Parses the solution of the Sat Solver into nothing
--- --   or a transition system which the only path is the counter example.
--- parseSolution :: Maybe (M.Map String Bool) ->
---                  T.DTS s DTL.Agent DTL.Formula Action ->
---                  Maybe ([(s, Action)], T.DTS Int Int DTL.Formula Action)
--- parseSolution sol dts
---   | isNothing sol = Nothing
---   | otherwise     = undefined
-
-
-
