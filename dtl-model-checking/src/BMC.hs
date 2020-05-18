@@ -733,7 +733,6 @@ translateFloop i acts psi x l k visited counter
   where tailF = DTL.tailFormula psi
         succc = loopSucc l k x
 
-
 -- -----------------------------------------------------------------------------
 -- END: Translation of formulas
 -- -----------------------------------------------------------------------------
