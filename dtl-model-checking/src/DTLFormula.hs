@@ -39,6 +39,7 @@ module DTLFormula
   , wrapLocal
   , makeNNF
   , negateGlobalFormula
+  , majorationPTH
   ) where
 
 import           Data.Maybe
@@ -147,6 +148,21 @@ makeNNFlocal (DualCom i f) = DualCom i (makeNNFlocal f)
 makeNNFlocal (Not (DualCom i f)) = Comunicates i (makeNNFlocal (negateLocalFormula f))
 makeNNFlocal (Implies f1 f2) = Or (makeNNFlocal (negateLocalFormula f1)) (makeNNFlocal f2)
 makeNNFlocal (Not (Implies f1 f2)) = And (makeNNFlocal f1) (makeNNFlocal (negateLocalFormula f2))
+
+
+-- This computes the majoration for a local DTL formula
+majorationPTH :: Formula -> Int
+majorationPTH f
+  | isPropSymbol    f = 0
+  | isCommunication f = 1 + majorationPTH (tailFormula f)
+  | isDualCom       f = 1 + majorationPTH (tailFormula f)
+  | isImplication   f = max (majorationPTH $ subImp!!0) (majorationPTH $ subImp!!1)
+  | isOr            f = max (majorationPTH $ subOr!!0) (majorationPTH $ subOr!!1)
+  | isAnd           f = max (majorationPTH $ subAnd!!0) (majorationPTH $ subAnd!!1)
+  | otherwise         = majorationPTH (tailFormula f)
+  where subImp = getSubFormulasImplication f
+        subOr  = getSubFormulasOr f
+        subAnd = getSubFormulasAnd f
 
 
 {-|
