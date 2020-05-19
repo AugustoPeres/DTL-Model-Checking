@@ -59,14 +59,14 @@ data LocalFormula = PropositionalSymbol PropSymbol
                   | Comunicates Agent LocalFormula
                   | DualCom Agent LocalFormula
                   | Implies LocalFormula LocalFormula
-                    deriving (Eq, Ord)
+                    deriving (Eq, Ord, Read)
 
 data GlobalFormula = Local Agent LocalFormula
                    | GNot GlobalFormula
                    | GAnd GlobalFormula GlobalFormula
                    | GOr GlobalFormula GlobalFormula
                    | GImplies GlobalFormula GlobalFormula
-                     deriving (Eq, Ord)
+                     deriving (Eq, Ord, Read)
 
 data Formula = FromLocal LocalFormula | FromGlobal GlobalFormula deriving (Eq, Ord)
 
