@@ -16,6 +16,7 @@ module BMC ( stateTranslation
            , modelCheckWithCounterExample
            , witnessTranslation
            , witnessTranslationLoop
+           , modelCheckWCE
            )
 
 where
@@ -41,6 +42,25 @@ type Action = String
 -- -----------------------------------------------------------------------------
 -- BEGIN: The model checking algorithm and helper functions for it
 -- -----------------------------------------------------------------------------
+
+-- | Input: A transition system, a dtl global formula,
+--          the number of agents, a staring point and a max bound
+--   Output: Tries to find a counter example for k=start, k=start+1 ...
+--           until k=maxbound. Returns the counter example as long as the value
+--           for which the counter example was found
+modelCheckWCE :: (Ord s) =>
+                 T.DTS s DTL.Agent DTL.Formula Action ->
+                 DTL.GlobalFormula ->
+                 Int -> -- ^ the number of agents
+                 Int -> -- ^ the starting point
+                 Int -> -- ^ the max depth of the search
+                 Maybe (M.Map String Bool, Int)
+modelCheckWCE dts alpha n start k
+  | start > k          = Nothing
+  | isNothing solution = modelCheckWCE dts alpha n (start+1) k
+  | otherwise          = Just (fromJust solution, start)
+  where solution = modelCheckWithCounterExample dts alpha n start
+
 
 -- | Input: A distributed transition system with
 --            * Any type of states
