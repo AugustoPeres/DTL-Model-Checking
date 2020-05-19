@@ -43,7 +43,7 @@ data DTS s i prop a = DTS {
                           propSymbols        :: M.Map i (S.Set prop),
                           labelingFunction   :: M.Map (s, i) (S.Set prop),
                           transitionRelation :: M.Map (s, a) [s]
-                          } deriving (Show)
+                          } deriving (Show, Read)
 -- -----------------------------------------------------------------------------
 -- END: Definition of destributed transition system
 -- -----------------------------------------------------------------------------
@@ -713,45 +713,3 @@ generateDTSFromStdGen n props actions stdgen p1 p2 =
 -- -----------------------------------------------------------------------------
 -- END: "Random" DTS generation
 -- -----------------------------------------------------------------------------
-
-
-
--- -- Just some test instances --
--- t = DTS {states = S.fromList [1, 2, 3, 4],
---         actions = M.fromList [(1, S.fromList ["a", "b"]), (2, S.fromList ["a", "c"])],
---         initialStates = S.fromList [1, 4],
---         propSymbols = M.fromList [
---             (1, S.fromList ["p1", "q1"]),
---             (2, S.fromList ["p2", "q2'"])
---                     ],
---         labelingFunction = M.fromList [
---                                       ((1, 1), S.fromList ["p"]),
---                                       ((1, 2), S.fromList ["q"]),
---                                       ((2, 1), S.fromList ["p"]),
---                                       ((2, 2), S.fromList []),
---                                       ((3, 1), S.fromList []),
---                                       ((3, 2), S.fromList ["q"]),
---                                       ((4, 1), S.fromList []),
---                                       ((4, 2), S.fromList [])
---                                       ],
---         transitionRelation = M.fromList []}
-
-
--- tKosBug = DTS {states = S.fromList [1, 2, 3, 4],
---         actions = M.fromList [(1, S.fromList ["a", "b"]), (2, S.fromList ["a", "c"])],
---         initialStates = S.fromList [1, 4],
---         propSymbols = M.fromList [
---             (1, S.fromList ["p1", "q1"]),
---             (2, S.fromList ["p2", "q2'"])
---                     ],
---         labelingFunction = M.fromList [
---                                       ((1, 1), S.fromList ["p"]),
---                                       ((1, 2), S.fromList ["q"]),
---                                       ((2, 1), S.fromList ["p"]),
---                                       ((2, 2), S.fromList []),
---                                       ((3, 1), S.fromList []),
---                                       ((3, 2), S.fromList ["q"]),
---                                       ((4, 1), S.fromList []),
---                                       ((4, 2), S.fromList [])
---                                       ],
---         transitionRelation = M.fromList [((3, "a"), [4]), ((4, "a"), [1])]}

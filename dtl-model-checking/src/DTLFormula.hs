@@ -43,6 +43,7 @@ module DTLFormula
   ) where
 
 import           Data.Maybe
+import CommonTypes
 import qualified Data.Set   as Set
 
 type PropSymbol = String
@@ -59,25 +60,25 @@ data LocalFormula = PropositionalSymbol PropSymbol
                   | Comunicates Agent LocalFormula
                   | DualCom Agent LocalFormula
                   | Implies LocalFormula LocalFormula
-                    deriving (Eq, Ord, Read)
+                    deriving (Eq, Ord)
 
 data GlobalFormula = Local Agent LocalFormula
                    | GNot GlobalFormula
                    | GAnd GlobalFormula GlobalFormula
                    | GOr GlobalFormula GlobalFormula
                    | GImplies GlobalFormula GlobalFormula
-                     deriving (Eq, Ord, Read)
+                     deriving (Eq, Ord)
 
 data Formula = FromLocal LocalFormula | FromGlobal GlobalFormula deriving (Eq, Ord)
 
 -- Instancing my custom show for the formulas
 instance Show LocalFormula
   where show (PropositionalSymbol a) = a -- no need to use show since this is already a string
-        show (Implies a b)           = show a ++ " => " ++ show b
+        show (Implies a b)           = "(" ++ show a ++ ")" ++ "=>" ++ "(" ++ show b ++ ")"
         show (Next a)                = "X(" ++ show a ++ ")"
         show (N a)                   = "N(" ++ show a ++ ")"
-        show (And a b)               = show a ++ "/\\" ++ show b
-        show (Or a b)                = show a ++ "\\/" ++ show b
+        show (And a b)               = "(" ++ show a ++ ")" ++ "/\\" ++ "(" ++ show b ++ ")"
+        show (Or a b)                = "(" ++ show a ++ ")" ++ "\\/" ++ "(" ++ show b ++ ")"
         show (Globally a)            = "G(" ++ show a ++ ")"
         show (Eventually f)          = "F(" ++ show f ++ ")"
         show (Comunicates agent a)   = "c_" ++ show agent ++ "(" ++ show a ++ ")"
@@ -87,13 +88,60 @@ instance Show LocalFormula
 instance Show GlobalFormula
   where show (Local agent a) = "@_" ++ show agent ++ "[" ++ show a ++ "]"
         show (GNot a)        = "~(" ++ show a ++ ")"
-        show (GAnd a b)      = show a ++ "/\\" ++ show b
-        show (GOr a b)       = show a ++ "\\/" ++ show b
-        show (GImplies a b)  = show a ++ " => " ++ show b
+        show (GAnd a b)      = "(" ++ show a ++ ")" ++ "/\\" ++ "(" ++ show b ++ ")"
+        show (GOr a b)       = "(" ++ show a ++ ")" ++ "\\/" ++ "(" ++ show b ++ ")"
+        show (GImplies a b)  = "(" ++ show a ++ ")" ++ "=>" ++ "(" ++ show b ++ ")"
 
 instance Show Formula
   where show (FromLocal a)  = show a
         show (FromGlobal a) = show a
+
+-- making instances of read
+instance Read LocalFormula
+  where readsPrec _ input = [(parseL input, "")]
+
+instance Read GlobalFormula
+  where readsPrec _ input = [(parseG input, "")]
+
+instance Read Formula
+  where readsPrec _ input = [(parseF input, "")]
+
+
+-- parsers for local formulas
+parseL :: String -> LocalFormula
+parseL ('X':xs)       = Next $ parseL (extractFromParenthesis xs)
+parseL ('G':xs)       = Globally $ parseL (extractFromParenthesis xs)
+parseL ('F':xs)       = Eventually $ parseL (extractFromParenthesis xs)
+parseL ('N':xs)       = N $ parseL (extractFromParenthesis xs)
+parseL ('~':xs)       = Not $ parseL (extractFromParenthesis xs)
+parseL ('c':'_':j:xs) = Comunicates (read [j] :: Int) (parseL (extractFromParenthesis xs))
+parseL string@('(':_)
+  | operator == "=>"  = Implies (parseL f1) (parseL f2)
+  | operator == "\\/" = Or (parseL f1) (parseL f2)
+  | operator == "/\\" = And (parseL f1) (parseL f2)
+  | otherwise         = error "Parse Error. No such binary operator"
+  where operator = getMidleOfExpression string
+        f1       = getFirstExpression string
+        f2       = getSecondExpression string
+parseL a = PropositionalSymbol a
+
+-- parser for global formula
+parseG :: String -> GlobalFormula
+parseG ('@':'_':j:xs) = Local (read [j] :: Int) (parseL (extractFromParenthesis xs))
+parseG ('~':xs)       = GNot $ parseG (extractFromParenthesis xs)
+parseG string@('(':_)
+  | operator == "\\/" = GOr (parseG f1) (parseG f2)
+  | operator == "/\\" = GAnd (parseG f1) (parseG f2)
+  | otherwise         = error "Parse Error. No such binary operator"
+  where operator = getMidleOfExpression string
+        f1       = getFirstExpression string
+        f2       = getSecondExpression string
+
+parseF :: String -> Formula
+parseF string =
+  if '@' `elem` string
+     then FromGlobal $ parseG string
+     else FromLocal $ parseL string
 
 -- Wraps a local formula
 wrapLocal :: LocalFormula -> Formula
