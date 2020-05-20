@@ -71,6 +71,9 @@ instance {-# OVERLAPPING #-} Show GNBAState where
 instance {-# OVERLAPPING #-} Show Action where
   show a = a
 
+instance {-# OVERLAPPING #-} Read Action where
+  readsPrec _ act = [(id act, "")]
+
 instance {-# OVERLAPPING #-} Show AlphabetSymbol where
   show sigma = "<" ++
                S.foldr (\a b -> b ++ show a ++ ",") "" (fst sigma) ++

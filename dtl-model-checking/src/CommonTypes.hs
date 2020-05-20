@@ -77,6 +77,7 @@ getFirstExpression ('(':tl) =
         go (')':xs) acc expr = go xs (acc-1) (expr++[')'])
         go (x:xs) acc expr   = go xs acc (expr++[x])
         go "" _ _            = error "Parse Error. Unbalanced parenthesis"
+getFirstExpression _ = error "Parse error"
 
 -- receives (A)operator(B) returns B
 getSecondExpression :: String -> String

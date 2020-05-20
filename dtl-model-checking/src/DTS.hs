@@ -9,7 +9,7 @@ module DTS (DTS (..), getAllActions, getLabel, getAgents,
             shortestPathFromInitialState, shortestPathFromInitialStateList,
             subDTSWithInitialStates, empty, bfsWithStopCondition,
             isReachableFromStates', getNeighboursByAction, getAllPropositionalSymbols,
-            getNeighboursWithActions)
+            getNeighboursWithActions, parseFromString)
 where
 
 import           CommonTypes
@@ -92,6 +92,23 @@ createFromStates list =
         labelingFunction   = M.empty,
         transitionRelation = M.empty}
 
+
+-- | Input: A dts, an agent, a propositional symbol
+--   Output: A DTS with that symbol added as a propositional symbol of the agent
+addToPropsAgents :: (Ord s, Ord i, Ord prop, Ord a) =>
+                    DTS s i prop a ->
+                    i ->
+                    prop ->
+                    DTS s i prop a
+addToPropsAgents dts i symb =
+  DTS { states             = states dts
+      , actions            = actions dts
+      , initialStates      = initialStates dts
+      , propSymbols        = M.insert i (currentSymbs `S.union` S.fromList [symb]) symbs
+      , labelingFunction   = labelingFunction dts
+      , transitionRelation = transitionRelation dts}
+  where currentSymbs = fromMaybe S.empty (symbs M.!? i)
+        symbs        = propSymbols dts
 
 -- | Input: A list of states and a dts
 --   Output: A new dts with the states added to the initial states
@@ -638,10 +655,47 @@ getAgents dts = M.keys (propSymbols dts)
 
 
 -- -----------------------------------------------------------------------------
--- BEGIN: "Random" dts generation
+-- BEGIN: dts generation and encodings
 -- -----------------------------------------------------------------------------
 -- This contains IO fuctions used for example to read systems from input or to
 -- generate random transition systems
+
+-- | Input: A string containing several lines of the form
+--              actions agent a1 a2
+--              states s1 s2 s3 s4
+--              initial s1 s2
+--              symbols agent p1 p2 p3
+--              label state agent p1 p2 p3
+--              state action state'
+--  Output: A transition system build from the string
+parseFromString :: (Ord s, Ord i, Ord prop, Ord a, Read s, Read i, Read prop, Read a) =>
+                   String ->
+                   DTS s i prop a
+parseFromString string =
+  foldr (\x y -> parseLine x y) empty ln
+  where ln = lines string
+
+
+-- | Input: A line in the previous format
+--   Output: A transition system updated
+parseLine :: (Ord s, Ord i, Ord prop, Ord a, Read s, Read i, Read prop, Read a) =>
+             String ->
+             DTS s i prop a ->
+             DTS s i prop a
+parseLine line dts
+  | wds == []        = dts
+  | key == "actions" = foldr (\x y -> addActionAgent y (read x) (read arg1)) dts (tail args)
+  | key == "states"  = foldr (\x y -> addState y (read x) [] False) dts args
+  | key == "initial" = foldr (\x y -> addToInitialStates y (read x)) dts args
+  | key == "symbols" = foldr (\x y -> addToPropsAgents y (read arg1) (read x)) dts (tail args)
+  | key == "label"   = addStateLabel dts (read $ args!!0) (read $ args!!1)
+                                     (foldr (\x y -> y ++ [read x]) [] (tail $ tail args))
+  | otherwise        = addTransitionSafe dts (read $ wds!!0) (read $ wds!!2) (read $ wds!!1)
+  where wds  = words line
+        args = tail wds
+        key  = wds!!0
+        arg1 = wds!!1
+
 
 -- | Input: A list of agents, propositional symbols for the agents
 --          actions for the agents, an stdgen, and two float denoting a probability.
@@ -711,5 +765,5 @@ generateDTSFromStdGen n props actions stdgen p1 p2 =
 
 
 -- -----------------------------------------------------------------------------
--- END: "Random" DTS generation
+-- END: DTS generation
 -- -----------------------------------------------------------------------------

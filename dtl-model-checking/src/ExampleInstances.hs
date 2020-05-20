@@ -5,6 +5,7 @@ module ExampleInstances
     -- exporting automatons
     gnbafEasy1, nbafEasy1, nbafEasy2, nbafMedium1,
     -- exporting transition systems --
+    tAsString,
     oneAgent1,
     t8States2Agents1, t8States2Agents2,
     t8States2Agents3, t8States2Agents4, t8States2Agents5, t8States2Agents6,
@@ -88,6 +89,11 @@ nbafMedium1  = A.convertGNBAToNBA gnbafMedium1 (G.getAlphabet gnbafMedium1)
 -- -----------------------------------------------------------------------------
 -- BEGIN: Transition Systems
 -- -----------------------------------------------------------------------------
+
+-- a simple transition system as string --
+tAsString :: String
+tAsString =
+  "states 1 2\ninitial 1\n actions 1 a b\nactions 2 a\nsymbols 1 p\nsymbols 2 q\nlabel 1 1 p\nlabel 1 2 q\nlabel 2 1 p\nlabel 2 2\n1 a 2"
 
 -- Simple transition system for just one agent
 oneAgent1 :: T.DTS Int Int F.Formula String
