@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -fforce-recomp    #-}
+{-# OPTIONS_GHC -O2               #-}
 module GNBA (GNBA(..), empty, addState, addTransition, addFinalSet, addToInitialStates,
             getNeighbours, getAlphabet)
 where

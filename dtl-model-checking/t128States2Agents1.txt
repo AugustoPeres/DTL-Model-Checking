@@ -1,0 +1,664 @@
+states 128 126 125 124 123 122 121 120 119 118 117 116 115 114 113 112 111 110 109 108 107 106 105 104 103 102 101 100 99 98 97 96 95 93 92 91 90 89 88 87 86 85 84 83 82 81 80 79 78 77 76 75 74 73 72 71 70 69 68 67 66 65 64 63 62 61 60 59 58 57 56 55 54 53 52 51 50 49 48 47 46 45 44 43 42 41 40 39 38 37 35 34 33 31 29 28 27 26 25 24 23 22 21 20 19 18 17 16 15 14 13 12 11 10 9 8 7 6 4 3 2 1
+initial 111 99 81 74 70 40 31 22 13 7 2 1
+actions 2 c a
+actions 1 b a
+symbols 2 q3 q2 q1
+symbols 1 p4 p3 p2 p1
+label 128 2 q3 q2 q1
+label 128 1 p4 p3 p2 p1
+label 126 2 q3 q1
+label 126 1 p4 p3 p2 p1
+label 125 2 q3
+label 125 1 p4 p3 p2 p1
+label 124 2 q2 q1
+label 124 1 p4 p3 p2 p1
+label 123 2 q2
+label 123 1 p4 p3 p2 p1
+label 122 2 q1
+label 122 1 p4 p3 p2 p1
+label 121 2
+label 121 1 p4 p3 p2 p1
+label 120 2 q3 q2 q1
+label 120 1 p4 p3 p2
+label 119 2 q3 q2
+label 119 1 p4 p3 p2
+label 118 2 q3 q1
+label 118 1 p4 p3 p2
+label 117 2 q3
+label 117 1 p4 p3 p2
+label 116 2 q2 q1
+label 116 1 p4 p3 p2
+label 115 2 q2
+label 115 1 p4 p3 p2
+label 114 2 q1
+label 114 1 p4 p3 p2
+label 113 2
+label 113 1 p4 p3 p2
+label 112 2 q3 q2 q1
+label 112 1 p4 p3 p1
+label 111 2 q3 q2
+label 111 1 p4 p3 p1
+label 110 2 q3 q1
+label 110 1 p4 p3 p1
+label 109 2 q3
+label 109 1 p4 p3 p1
+label 108 2 q2 q1
+label 108 1 p4 p3 p1
+label 107 2 q2
+label 107 1 p4 p3 p1
+label 106 2 q1
+label 106 1 p4 p3 p1
+label 105 2
+label 105 1 p4 p3 p1
+label 104 2 q3 q2 q1
+label 104 1 p4 p3
+label 103 2 q3 q2
+label 103 1 p4 p3
+label 102 2 q3 q1
+label 102 1 p4 p3
+label 101 2 q3
+label 101 1 p4 p3
+label 100 2 q2 q1
+label 100 1 p4 p3
+label 99 2 q2
+label 99 1 p4 p3
+label 98 2 q1
+label 98 1 p4 p3
+label 97 2
+label 97 1 p4 p3
+label 96 2 q3 q2 q1
+label 96 1 p4 p2 p1
+label 95 2 q3 q2
+label 95 1 p4 p2 p1
+label 93 2 q3
+label 93 1 p4 p2 p1
+label 92 2 q2 q1
+label 92 1 p4 p2 p1
+label 91 2 q2
+label 91 1 p4 p2 p1
+label 90 2 q1
+label 90 1 p4 p2 p1
+label 89 2
+label 89 1 p4 p2 p1
+label 88 2 q3 q2 q1
+label 88 1 p4 p2
+label 87 2 q3 q2
+label 87 1 p4 p2
+label 86 2 q3 q1
+label 86 1 p4 p2
+label 85 2 q3
+label 85 1 p4 p2
+label 84 2 q2 q1
+label 84 1 p4 p2
+label 83 2 q2
+label 83 1 p4 p2
+label 82 2 q1
+label 82 1 p4 p2
+label 81 2
+label 81 1 p4 p2
+label 80 2 q3 q2 q1
+label 80 1 p4 p1
+label 79 2 q3 q2
+label 79 1 p4 p1
+label 78 2 q3 q1
+label 78 1 p4 p1
+label 77 2 q3
+label 77 1 p4 p1
+label 76 2 q2 q1
+label 76 1 p4 p1
+label 75 2 q2
+label 75 1 p4 p1
+label 74 2 q1
+label 74 1 p4 p1
+label 73 2
+label 73 1 p4 p1
+label 72 2 q3 q2 q1
+label 72 1 p4
+label 71 2 q3 q2
+label 71 1 p4
+label 70 2 q3 q1
+label 70 1 p4
+label 69 2 q3
+label 69 1 p4
+label 68 2 q2 q1
+label 68 1 p4
+label 67 2 q2
+label 67 1 p4
+label 66 2 q1
+label 66 1 p4
+label 65 2
+label 65 1 p4
+label 64 2 q3 q2 q1
+label 64 1 p3 p2 p1
+label 63 2 q3 q2
+label 63 1 p3 p2 p1
+label 62 2 q3 q1
+label 62 1 p3 p2 p1
+label 61 2 q3
+label 61 1 p3 p2 p1
+label 60 2 q2 q1
+label 60 1 p3 p2 p1
+label 59 2 q2
+label 59 1 p3 p2 p1
+label 58 2 q1
+label 58 1 p3 p2 p1
+label 57 2
+label 57 1 p3 p2 p1
+label 56 2 q3 q2 q1
+label 56 1 p3 p2
+label 55 2 q3 q2
+label 55 1 p3 p2
+label 54 2 q3 q1
+label 54 1 p3 p2
+label 53 2 q3
+label 53 1 p3 p2
+label 52 2 q2 q1
+label 52 1 p3 p2
+label 51 2 q2
+label 51 1 p3 p2
+label 50 2 q1
+label 50 1 p3 p2
+label 49 2
+label 49 1 p3 p2
+label 48 2 q3 q2 q1
+label 48 1 p3 p1
+label 47 2 q3 q2
+label 47 1 p3 p1
+label 46 2 q3 q1
+label 46 1 p3 p1
+label 45 2 q3
+label 45 1 p3 p1
+label 44 2 q2 q1
+label 44 1 p3 p1
+label 43 2 q2
+label 43 1 p3 p1
+label 42 2 q1
+label 42 1 p3 p1
+label 41 2
+label 41 1 p3 p1
+label 40 2 q3 q2 q1
+label 40 1 p3
+label 39 2 q3 q2
+label 39 1 p3
+label 38 2 q3 q1
+label 38 1 p3
+label 37 2 q3
+label 37 1 p3
+label 35 2 q2
+label 35 1 p3
+label 34 2 q1
+label 34 1 p3
+label 33 2
+label 33 1 p3
+label 31 2 q3 q2
+label 31 1 p2 p1
+label 29 2 q3
+label 29 1 p2 p1
+label 28 2 q2 q1
+label 28 1 p2 p1
+label 27 2 q2
+label 27 1 p2 p1
+label 26 2 q1
+label 26 1 p2 p1
+label 25 2
+label 25 1 p2 p1
+label 24 2 q3 q2 q1
+label 24 1 p2
+label 23 2 q3 q2
+label 23 1 p2
+label 22 2 q3 q1
+label 22 1 p2
+label 21 2 q3
+label 21 1 p2
+label 20 2 q2 q1
+label 20 1 p2
+label 19 2 q2
+label 19 1 p2
+label 18 2 q1
+label 18 1 p2
+label 17 2
+label 17 1 p2
+label 16 2 q3 q2 q1
+label 16 1 p1
+label 15 2 q3 q2
+label 15 1 p1
+label 14 2 q3 q1
+label 14 1 p1
+label 13 2 q3
+label 13 1 p1
+label 12 2 q2 q1
+label 12 1 p1
+label 11 2 q2
+label 11 1 p1
+label 10 2 q1
+label 10 1 p1
+label 9 2
+label 9 1 p1
+label 8 2 q3 q2 q1
+label 8 1
+label 7 2 q3 q2
+label 7 1
+label 6 2 q3 q1
+label 6 1
+label 4 2 q2 q1
+label 4 1
+label 3 2 q2
+label 3 1
+label 2 2 q1
+label 2 1
+label 1 2
+label 1 1
+128 a 98
+128 a 20
+128 a 2
+126 a 46
+125 b 69
+125 a 39
+124 c 122
+124 a 125
+124 a 95
+124 a 89
+124 a 13
+123 a 98
+123 a 93
+123 a 54
+123 a 6
+122 a 111
+122 a 18
+121 b 33
+121 a 107
+121 a 68
+121 a 16
+120 c 116
+120 a 97
+120 a 76
+120 a 18
+119 a 126
+119 a 95
+118 a 11
+117 a 39
+116 b 20
+116 a 91
+116 a 58
+116 a 28
+115 a 67
+115 a 12
+114 a 125
+113 a 97
+112 a 62
+112 a 24
+112 a 21
+111 a 117
+111 a 97
+111 a 96
+111 a 81
+111 a 52
+111 a 21
+110 a 97
+110 a 71
+110 a 55
+110 a 21
+110 a 14
+109 b 29
+109 a 83
+109 a 67
+109 a 64
+109 a 53
+108 a 74
+108 a 25
+107 a 124
+107 a 108
+107 a 53
+107 a 45
+106 a 109
+106 a 56
+105 a 75
+105 a 10
+104 a 108
+104 a 77
+103 a 24
+103 a 16
+103 a 14
+102 a 67
+102 a 26
+101 a 24
+100 a 95
+100 a 84
+100 a 3
+99 b 35
+99 a 109
+99 a 76
+99 a 59
+98 b 26
+98 a 96
+98 a 22
+97 a 123
+97 a 100
+97 a 87
+97 a 50
+97 a 48
+96 a 92
+96 a 12
+95 a 117
+95 a 99
+95 a 87
+95 a 80
+93 a 125
+93 a 6
+92 a 125
+92 a 16
+91 a 110
+91 a 99
+91 a 68
+91 a 54
+91 a 3
+90 a 74
+90 a 66
+90 a 53
+89 a 123
+89 a 96
+89 a 34
+88 c 82
+88 b 48
+88 a 121
+88 a 99
+87 a 101
+87 a 69
+87 a 7
+86 a 84
+85 a 118
+85 a 98
+85 a 77
+85 a 52
+84 a 115
+84 a 103
+84 a 82
+84 a 60
+84 a 8
+83 a 38
+82 a 123
+82 a 103
+82 a 80
+82 a 56
+81 b 41
+81 a 104
+81 a 46
+81 a 39
+80 c 74
+80 a 101
+80 a 44
+80 a 15
+80 a 11
+79 a 58
+79 a 48
+79 a 11
+79 a 7
+79 a 6
+78 b 14
+78 a 8
+77 a 47
+76 c 75
+76 a 120
+76 a 114
+76 a 91
+76 a 46
+76 a 44
+75 c 78
+75 a 108
+75 a 98
+75 a 97
+75 a 81
+75 a 67
+75 a 62
+75 a 22
+75 a 4
+74 a 114
+74 a 93
+74 a 53
+74 a 43
+74 a 22
+73 a 93
+73 a 31
+73 a 7
+72 a 125
+72 a 54
+72 a 23
+72 a 16
+72 a 11
+71 a 114
+71 a 66
+71 a 34
+70 a 126
+70 a 110
+70 a 33
+70 a 7
+69 a 80
+69 a 39
+68 a 101
+68 a 99
+68 a 7
+67 a 72
+66 b 34
+66 a 112
+66 a 28
+65 a 125
+65 a 67
+65 a 42
+64 a 111
+64 a 84
+64 a 46
+64 a 4
+63 c 61
+63 a 110
+63 a 93
+63 a 78
+62 b 38
+62 a 102
+62 a 62
+62 a 37
+62 a 21
+62 a 7
+61 b 101
+61 a 73
+61 a 65
+61 a 56
+61 a 54
+60 a 98
+60 a 70
+60 a 57
+60 a 47
+60 a 41
+60 a 17
+59 a 120
+59 a 61
+59 a 12
+58 a 114
+58 a 66
+57 a 128
+57 a 123
+57 a 111
+57 a 95
+57 a 40
+57 a 39
+57 a 21
+56 a 109
+56 a 93
+56 a 70
+56 a 49
+56 a 29
+56 a 7
+55 a 120
+55 a 102
+55 a 80
+55 a 70
+54 a 109
+54 a 39
+53 a 71
+53 a 66
+53 a 53
+53 a 15
+52 a 88
+52 a 51
+51 a 115
+51 a 89
+51 a 84
+51 a 7
+50 a 113
+50 a 95
+50 a 61
+49 c 56
+49 a 49
+49 a 27
+49 a 24
+49 a 15
+49 a 14
+48 a 119
+48 a 107
+48 a 104
+48 a 95
+48 a 7
+47 a 112
+47 a 103
+47 a 95
+46 b 14
+46 a 38
+46 a 9
+45 b 37
+45 a 114
+45 a 79
+44 a 70
+44 a 33
+44 a 7
+43 b 19
+43 a 89
+43 a 52
+43 a 15
+42 a 110
+42 a 105
+42 a 76
+42 a 61
+42 a 56
+42 a 34
+42 a 13
+41 a 104
+41 a 98
+41 a 8
+40 a 44
+39 c 39
+39 a 34
+39 a 23
+38 a 128
+38 a 79
+38 a 48
+37 a 47
+35 a 41
+35 a 23
+34 a 109
+34 a 69
+33 b 105
+33 b 57
+33 a 103
+33 a 102
+33 a 61
+31 a 17
+31 a 6
+29 a 121
+29 a 112
+29 a 70
+29 a 54
+29 a 28
+28 c 31
+28 a 123
+28 a 60
+28 a 57
+28 a 47
+28 a 28
+28 a 7
+27 a 10
+27 a 9
+26 b 58
+26 a 114
+26 a 93
+26 a 59
+26 a 52
+26 a 51
+26 a 50
+26 a 38
+25 a 117
+25 a 107
+25 a 96
+25 a 85
+25 a 53
+25 a 42
+24 a 124
+24 a 123
+24 a 107
+23 a 39
+22 a 106
+22 a 96
+21 c 22
+21 a 126
+21 a 59
+21 a 6
+20 a 126
+20 a 120
+20 a 18
+19 a 98
+18 a 115
+18 a 85
+18 a 74
+18 a 64
+18 a 56
+18 a 23
+17 a 89
+17 a 72
+17 a 54
+17 a 21
+16 a 99
+16 a 86
+15 a 118
+15 a 106
+15 a 29
+14 a 108
+14 a 64
+14 a 61
+14 a 39
+14 a 23
+14 a 9
+13 a 90
+13 a 63
+13 a 58
+13 a 18
+13 a 8
+12 a 113
+12 a 58
+12 a 11
+11 a 60
+11 a 37
+11 a 18
+11 a 10
+10 a 40
+9 b 17
+9 a 108
+9 a 64
+9 a 27
+8 a 71
+8 a 58
+7 b 95
+7 a 128
+7 a 111
+7 a 83
+6 a 100
+6 a 93
+6 a 67
+6 a 54
+4 a 115
+4 a 52
+3 a 111
+3 a 72
+3 a 59
+3 a 29
+2 a 103
+2 a 44
+1 a 86
+1 a 33

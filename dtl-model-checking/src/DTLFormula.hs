@@ -130,6 +130,7 @@ parseG :: String -> GlobalFormula
 parseG ('@':'_':j:xs) = Local (read [j] :: Int) (parseL (extractFromParenthesis xs))
 parseG ('~':xs)       = GNot $ parseG (extractFromParenthesis xs)
 parseG string@('(':_)
+  | operator == "=>"  = GImplies (parseG f1) (parseG f2)
   | operator == "\\/" = GOr (parseG f1) (parseG f2)
   | operator == "/\\" = GAnd (parseG f1) (parseG f2)
   | otherwise         = error "Parse Error. No such binary operator"

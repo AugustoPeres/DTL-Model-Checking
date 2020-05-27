@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -fforce-recomp    #-}
+{-# OPTIONS_GHC -O2               #-}
 module DTS (DTS (..), getAllActions, getLabel, getAgents,
             getPropSymbolsAgent, createFromStates, addStateLabel,
             addToInitialStates, addTransitionSafe, addActionAgent,
@@ -688,7 +690,7 @@ dumpToString dts =
                  symbs
   ++
   -- now we dump the labeling function --
-  M.foldrWithKey (\k x y -> y ++ "label " ++  show (snd k) ++ " " ++ show (fst k) ++ " " ++ dumpFoldable x ++ "\n")
+  M.foldrWithKey (\k x y -> y ++ "label " ++  show (fst k) ++ " " ++ show (snd k) ++ " " ++ dumpFoldable x ++ "\n")
                  ""
                  lbl
   ++

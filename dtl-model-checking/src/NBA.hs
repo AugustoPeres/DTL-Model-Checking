@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -fforce-recomp    #-}
+{-# OPTIONS_GHC -O2               #-}
 module NBA
   (
   NBA(..), State, getNeighbours, getNeighboursGeneral, deleteNeverAcceptingStates,

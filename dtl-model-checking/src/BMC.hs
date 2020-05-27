@@ -1,5 +1,7 @@
 {-# LANGUAGE FlexibleInstances    #-}
 {-# LANGUAGE TypeSynonymInstances #-}
+{-# OPTIONS_GHC -fforce-recomp    #-}
+{-# OPTIONS_GHC -O2               #-}
 module BMC ( stateTranslation
            , dtsTranslation
            , trTranslation
@@ -17,17 +19,18 @@ module BMC ( stateTranslation
            , witnessTranslation
            , witnessTranslationLoop
            , modelCheckWCE
+           , modelCheckUntilK
            )
 
 where
 
-import           Data.List     (intersect, (\\), nub)
+import           Data.List     (intersect, nub, (\\))
 import qualified Data.Map.Lazy as M
+import           Data.Maybe
 import qualified Data.Set      as S
 import qualified DTLFormula    as DTL
 import qualified DTS           as T
 import           SAT.MiniSat
-import Data.Maybe
 
 -- -----------------------------------------------------------------------------
 -- BEGIN: Description
@@ -79,6 +82,24 @@ modelCheckWithCounterExample dts alpha n k =
   where allActions = map (T.getActionsAgent newDTS) [1..n]
         notAlpha   = DTL.makeNNF $ DTL.negateGlobalFormula alpha
         newDTS     = T.fullSimplify dts
+
+
+-- | Input: A distributed transition system, a formula, the number of agents,
+--          and a maximum bound
+--   Output: Yes or No depending on the solution. Searches for a solution for
+--           k=0, k=1, ..., k=max-bound
+modelCheckUntilK :: (Ord s) =>
+                    T.DTS s DTL.Agent DTL.Formula Action ->
+                    DTL.GlobalFormula ->
+                    Int -> -- ^ the number of agents
+                    Int -> -- ^ the starting point
+                    Int -> -- ^ the max depth of the search
+                    Bool
+modelCheckUntilK dts alpha n start k
+  | start > k    = False
+  | not solution = modelCheck dts alpha n (start+1)
+  | otherwise    = True
+  where solution = modelCheck dts alpha n start
 
 
 -- | Input: A distributed transition system with
