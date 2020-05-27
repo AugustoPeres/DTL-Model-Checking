@@ -1,11 +1,12 @@
 #+TITLE: Usage of the model checker
 #+AUTHOR: Augusto Peres
+#+OPTIONS: toc:nil
 
 
 * Expressing the formulas
 
 The DTL formula we want to model check should be passed as one of the arguments.
-To express the formulas all parenthesis should be used whenever an operator is
+To express the formulas parenthesis should be used whenever an operator is
 use, this includes $\wedge$, $\implies$, $\vee$.
 
 For example $@_1[p \implies q]$ should be expressed as ~@_1((p)=>(q))~. Spaces
@@ -30,6 +31,7 @@ be of the following form:
    of the agent that are present in the state.
 6. ~state action state~. Describes the transition relation.
 
+
 * Using the model checker
 
 The model checker is used as a command line application with the following
@@ -51,7 +53,7 @@ This can be copy pasted [[http:webgraphviz.com][here]] to visualize.
 
 ** Model checking
 
-To get a simple yes or no answer just use for
+To get a simple yes or no answer just use as
 
 #+BEGIN_SRC shell
 ./Main -modelCheck <path-to-transition-system> <formula> <number of agents>
@@ -79,7 +81,7 @@ CounterExample [ [(s1, x1), (s2, x2)...(sn, x2)], [(sn, xn), ..., (sn, xn)] ]
 
 This corresponds to the infinite path in the dot product of DTS with the
 automaton that witnesses the persistence property. Projecting the first
-coordinates yields an infinite path in the transitioon function.
+coordinates yields an infinite path in the transition function.
 
 To use the bounded model checking approach
 
@@ -90,11 +92,12 @@ To use the bounded model checking approach
 The output should be something of the form
 
 #+BEGIN_SRC shell
-fromList [("0_a":True)..("0_p1":True)...]
+Just (fromList [("0_a":True)..("0_p1":True)...], k)
 #+END_SRC
 
 Corresponding to the solution of the formula and the symbols present in each
-state. The number before "_" indicates the action taken at that step.
+state. The number before "_" indicates the action taken at that step. k
+corresponds to the bound for which a counter example was found
 
 
 * Some examples

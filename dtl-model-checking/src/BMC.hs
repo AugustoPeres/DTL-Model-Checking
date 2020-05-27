@@ -96,9 +96,9 @@ modelCheckUntilK :: (Ord s) =>
                     Int -> -- ^ the max depth of the search
                     Bool
 modelCheckUntilK dts alpha n start k
-  | start > k    = False
-  | not solution = modelCheck dts alpha n (start+1)
-  | otherwise    = True
+  | start > k = True
+  | solution  = modelCheck dts alpha n (start+1)
+  | otherwise = False
   where solution = modelCheck dts alpha n start
 
 

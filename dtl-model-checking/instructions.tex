@@ -1,0 +1,160 @@
+% Created 2020-05-27 Wed 17:32
+% Intended LaTeX compiler: pdflatex
+\documentclass[11pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{graphicx}
+\usepackage{grffile}
+\usepackage{longtable}
+\usepackage{wrapfig}
+\usepackage{rotating}
+\usepackage[normalem]{ulem}
+\usepackage{amsmath}
+\usepackage{textcomp}
+\usepackage{amssymb}
+\usepackage{capt-of}
+\usepackage{hyperref}
+\author{Augusto Peres}
+\date{\today}
+\title{Usage of the model checker}
+\hypersetup{
+ pdfauthor={Augusto Peres},
+ pdftitle={Usage of the model checker},
+ pdfkeywords={},
+ pdfsubject={},
+ pdfcreator={Emacs 26.3 (Org mode 9.3.6)}, 
+ pdflang={English}}
+\begin{document}
+
+\maketitle
+
+
+\section{Expressing the formulas}
+\label{sec:org953ebfe}
+
+The DTL formula we want to model check should be passed as one of the arguments.
+To express the formulas all parenthesis should be used whenever an operator is
+use, this includes \(\wedge\), \(\implies\), \(\vee\).
+
+For example \(@_1[p \implies q]\) should be expressed as \texttt{@\_1((p)=>(q))}. Spaces
+should also not be used to express formulas. Communication formulas are
+expressed as \texttt{c\_2(otherformulas)}.
+
+\textbf{Note}: When not using the bounded options it is not possible the usage of
+ \(\vee\), \(\wedge\) or any other dual operators.
+
+\section{Expressing transition systems}
+\label{sec:org82f870d}
+
+The transition system should be encoded in a file. The lines in that file must
+be of the following form:
+
+\begin{enumerate}
+\item \texttt{states 1 2 3 4}. This line says the states present in the system
+\item \texttt{initial 1 2}. This lines states the initial states
+\item \texttt{actions agent a1 a2}. This line states the actions of each agent. agent
+should be an integer
+\item \texttt{symbols agent p1 p2 p1}. States the propositional symbols available to each
+agent.
+\item \texttt{label state agent p1 p2}. States the propositional symbols in the language
+of the agent that are present in the state.
+\item \texttt{state action state}. Describes the transition relation.
+\end{enumerate}
+
+\section{Using the model checker}
+\label{sec:org6e540a1}
+
+The model checker is used as a command line application with the following
+options.
+
+\subsection{Visializations}
+\label{sec:orgf8a45c4}
+
+Transition systems can be outputed to the graphviz format by calling
+
+\begin{verbatim}
+./Main -toGraphviz path-to-the-file-containing-the-transition-system
+\end{verbatim}
+
+This outputs the full the transition system and the full simplified transition
+system, \emph{i.e}, the transition system with all dead or unreachable states
+removed.
+
+This can be copy pasted \href{http:webgraphviz.com}{here} to visualize. 
+
+\subsection{Model checking}
+\label{sec:org75f5e41}
+
+To get a simple yes or no answer just use for
+
+\begin{verbatim}
+./Main -modelCheck <path-to-transition-system> <formula> <number of agents>
+\end{verbatim}
+
+This uses the default automata theoretic approach.
+
+To use the bounded approach
+
+\begin{verbatim}
+./Main -modelCheck <path-to-transition-system> <formula> <number of agents> -bounded <maxbound>
+\end{verbatim}
+
+To get one counter example we use
+
+\begin{verbatim}
+./Main -oneCounterExample <path-to-transition-system> <formula> <number of agents>
+\end{verbatim}
+
+This outputs something of the form
+
+\begin{verbatim}
+CounterExample [ [(s1, x1), (s2, x2)...(sn, x2)], [(sn, xn), ..., (sn, xn)] ]
+\end{verbatim}
+
+This corresponds to the infinite path in the dot product of DTS with the
+automaton that witnesses the persistence property. Projecting the first
+coordinates yields an infinite path in the transitioon function.
+
+To use the bounded model checking approach
+
+\begin{verbatim}
+./Main -oneCounterExample <path-to-transition-system> <formula> <number of agents> -bounded <max-bound>
+\end{verbatim}
+
+The output should be something of the form
+
+\begin{verbatim}
+fromList [("0_a":True)..("0_p1":True)...]
+\end{verbatim}
+
+Corresponding to the solution of the formula and the symbols present in each
+state. The number before "\_" indicates the action taken at that step.
+
+
+\section{Some examples}
+\label{sec:org3624e08}
+
+\begin{verbatim}
+./Main -modelCheck t8States2Agents1.txt "(@_1(p1))=>~(@_2(q1))" 2
+True
+
+
+./Main -modelCheck t8States2Agents1.txt "@_2(X(c_1(p2)))" 2
+True
+
+
+./Main -modelCheck t8States2Agents4.txt "(@_1(c_2(q1)))=>(@_1(p1))" 2
+False
+
+
+./Main -modelCheck t8States2Agents4.txt "@_1(F((p1)/\\(p2)))" 2 -bounded 0
+True
+
+./Main -modelCheck t8States2Agents4.txt "@_1(F((p1)/\\(p2)))" 2 -bounded 2
+False
+
+
+./Main -oneCounterExample t8States2Agents4.txt "@_1(F((p1)/\\(p2)))" 2 -bounded 2
+Just (fromList [(0_"a",True),(0_"b",False),(0_"c",False),(0_p1,False),(0_p2,False),(0_q1,False),(1_"a",False),(1_"b",True),(1_"c",False),(1_p1,True),(1_p2,False),(1_q1,False)],1)
+\end{verbatim}
+\end{document}
