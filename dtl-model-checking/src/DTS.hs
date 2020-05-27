@@ -9,7 +9,7 @@ module DTS (DTS (..), getAllActions, getLabel, getAgents,
             shortestPathFromInitialState, shortestPathFromInitialStateList,
             subDTSWithInitialStates, empty, bfsWithStopCondition,
             isReachableFromStates', getNeighboursByAction, getAllPropositionalSymbols,
-            getNeighboursWithActions, parseFromString)
+            getNeighboursWithActions, parseFromString, dumpToString)
 where
 
 import           CommonTypes
@@ -659,6 +659,58 @@ getAgents dts = M.keys (propSymbols dts)
 -- -----------------------------------------------------------------------------
 -- This contains IO fuctions used for example to read systems from input or to
 -- generate random transition systems
+
+-- | Input: A transition system.
+--   Output: A string of the form
+--              actions agent a1 a2
+--              states s1 s2 s3 s4
+--              initial s1 s2
+--              symbols agent p1 p2 p3
+--              label state agent p1 p2 p3
+--              state action state'
+dumpToString :: (Ord s, Ord i, Ord prop, Ord a, Show s, Show i, Show prop, Show a) =>
+                DTS s i prop a ->
+                String
+dumpToString dts =
+  "states " ++ dumpFoldable sts
+  ++ "\n" ++
+  -- now we add the initial states --
+  "initial " ++ dumpFoldable inits
+  ++ "\n" ++
+  -- now we dump the actions to the file --
+  M.foldrWithKey (\k x y -> y ++ "actions " ++ show k ++ " " ++ dumpFoldable x ++ "\n")
+                 ""
+                 acts
+  ++
+  -- now we add the propositional symbols
+  M.foldrWithKey (\k x y -> y ++ "symbols " ++ show k ++ " " ++ dumpFoldable x ++ "\n")
+                 ""
+                 symbs
+  ++
+  -- now we dump the labeling function --
+  M.foldrWithKey (\k x y -> y ++ "label " ++  show (snd k) ++ " " ++ show (fst k) ++ " " ++ dumpFoldable x ++ "\n")
+                 ""
+                 lbl
+  ++
+  -- now we dump the transition relation --
+  M.foldrWithKey (\k x y ->
+                    y ++
+                    foldr (\x' y' -> y' ++ show (fst k) ++ " " ++ show (snd k) ++ " " ++  show x' ++ "\n") "" x)
+                 ""
+                 tr
+ where sts   = states dts
+       acts  = actions dts
+       inits = initialStates dts
+       symbs = propSymbols dts
+       lbl   = labelingFunction dts
+       tr    = transitionRelation dts
+
+-- aux function to dump some foldable [a, b, c] to a string
+-- of the form "a b c "
+dumpFoldable :: (Foldable t, Show a) =>
+                t a ->
+                String
+dumpFoldable = foldr (\x y -> y ++ show x ++ " ") ""
 
 -- | Input: A string containing several lines of the form
 --              actions agent a1 a2
