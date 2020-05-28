@@ -1,0 +1,104 @@
+states 16 15 14 13 12 11 10 9 8 7 6 5 4 3 2 1 
+initial 11 1 
+actions 2 c a 
+actions 1 b a 
+symbols 2 q2 q1 
+symbols 1 p2 p1 
+label 16 2 q2 q1 
+label 16 1 p2 p1 
+label 15 2 q2 
+label 15 1 p2 p1 
+label 14 2 q1 
+label 14 1 p2 p1 
+label 13 2 
+label 13 1 p2 p1 
+label 12 2 q2 q1 
+label 12 1 p2 
+label 11 2 q2 
+label 11 1 p2 
+label 10 2 q1 
+label 10 1 p2 
+label 9 2 
+label 9 1 p2 
+label 8 2 q2 q1 
+label 8 1 p1 
+label 7 2 q2 
+label 7 1 p1 
+label 6 2 q1 
+label 6 1 p1 
+label 5 2 
+label 5 1 p1 
+label 4 2 q2 q1 
+label 4 1 
+label 3 2 q2 
+label 3 1 
+label 2 2 q1 
+label 2 1 
+label 1 2 
+label 1 1 
+16 b 16
+16 b 12
+16 a 15
+16 a 12
+16 a 11
+16 a 3
+15 a 14
+15 a 4
+15 a 2
+14 c 16
+14 a 16
+14 a 15
+14 a 5
+13 b 5
+13 a 14
+13 a 5
+13 a 1
+12 a 16
+12 a 4
+12 a 1
+11 c 11
+11 a 14
+11 a 6
+11 a 5
+10 b 14
+10 b 6
+10 a 15
+10 a 7
+10 a 1
+9 a 15
+8 c 5
+8 a 10
+8 a 8
+8 a 6
+7 a 14
+7 a 12
+7 a 10
+7 a 7
+7 a 3
+6 b 6
+6 a 13
+6 a 6
+6 a 5
+6 a 3
+5 c 7
+5 b 5
+5 a 13
+5 a 12
+5 a 4
+4 a 8
+4 a 7
+4 a 3
+4 a 2
+3 a 9
+3 a 8
+3 a 6
+3 a 2
+3 a 1
+2 a 13
+2 a 11
+2 a 8
+2 a 4
+2 a 2
+1 b 13
+1 a 7
+1 a 3

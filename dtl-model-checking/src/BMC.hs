@@ -120,6 +120,7 @@ modelCheck dts alpha n k =
         notAlpha   = DTL.makeNNF $ DTL.negateGlobalFormula alpha
         newDTS     = T.fullSimplify dts
 
+
 -- | Input: A distributed transition system with
 --            * Any type of states
 --            * Agents are the agents of the DTL package

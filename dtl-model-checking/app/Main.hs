@@ -2,14 +2,14 @@
 {-# OPTIONS_GHC -O2               #-}
 module Main where
 
-import System.Environment
-import System.Exit
+import           System.Environment
+import           System.Exit
 
-import AutomataTheoreticApproach as A
-import DTS as T
-import DTLFormula as F
-import BMC as B
-import CommonTypes
+import           AutomataTheoreticApproach as A
+import           BMC                       as B
+import           CommonTypes
+import           DTLFormula                as F
+import           DTS                       as T
 
 --import Lib
 
