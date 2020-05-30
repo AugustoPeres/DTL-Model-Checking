@@ -3,11 +3,11 @@ import timeit
 import functools
 import numpy as np
 
+niterations = 3
+timeoutvalue = 180
 
 def send_mc_command_classical(formula, trfile):
     aux = lambda x: subprocess.check_output(x, shell = True)
-    niterations = 3
-    timeoutvalue = 180
     command = "gtimeout " + str(timeoutvalue) + " dtl-model-checking-exe -modelCheck {i} \"{j}\" 2".format(j=formula, i=trfile)
     try:
         time = timeit.timeit(
@@ -21,14 +21,22 @@ def send_mc_command_classical(formula, trfile):
 
 def get_times_classical_approach(formulas, systems):
     values = np.zeros((len(formulas), len(systems)))
+    timeouts = np.zeros((len(formulas), len(systems)))
     for fList in zip(formulas, range(len(formulas))):
         for tList in zip(systems, range(len(systems))):
             times = []
             for f in fList[0]:
                 for t in tList[0]:
                     times.append(send_mc_command_classical(f, t))
-            values [fList[1], tList[1]] = sum(times) / len(times)
-    return values
+            mean_times, tms = mean_with_timeout_checker(times)
+            values[fList[1], tList[1]] = mean_times
+            timeouts[fList[1], tList[1]] = tms
+    return values, timeouts
+
+def mean_with_timeout_checker(value_list):
+    new_value_list = list(filter(lambda x: x!=timeoutvalue, value_list))
+    timeouts = len(list(filter(lambda x: x==timeoutvalue, value_list)))
+    return sum(new_value_list) / len(new_value_list), timeouts
 
 # create an aux function that keeps track of the time outs that occur
 # we should also filter out any times equal to the timeout value from the
@@ -41,7 +49,7 @@ if __name__ == '__main__':
     formulasWithLength4 = ["@_1((c_2(q1))=>(~(p1)))", "@_1((c_2(q1))=>(X(p1)))", "(@_1(p1))=>(@_2(~(q1)))", "@_1(c_2(~(G(q1))))"]
 
     # Reverse this to have smaller formulas on bottom
-    allFormulas = [formulasWithLength2, formulasWithLength3, formulasWithLength4]
+    allFormulas = list(reversed([formulasWithLength2, formulasWithLength3, formulasWithLength4]))
 
 
     pathsSize8 = ["../dtl-model-checking/ExampleFiles/t8States1",
@@ -67,5 +75,7 @@ if __name__ == '__main__':
 
     print(get_times_classical_approach(allFormulas, allDTSs))
     # Script to make the plots
-    sizeOfFormulas = ['2', '3', '4']
-    sizeOfTransitionSystems = ['8', '16', '32', '126']
+    sizeOfFormulas = list(reversed(['2', '3', '4']))
+    sizeOfTransitionSystems = ['8', '16', '32', '64']
+
+
