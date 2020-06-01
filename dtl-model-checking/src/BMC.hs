@@ -97,7 +97,7 @@ modelCheckUntilK :: (Ord s) =>
                     Bool
 modelCheckUntilK dts alpha n start k
   | start > k = True
-  | solution  = modelCheck dts alpha n (start+1)
+  | solution  = modelCheckUntilK dts alpha n (start+1) k
   | otherwise = False
   where solution = modelCheck dts alpha n start
 
