@@ -384,8 +384,9 @@ tailFormula (FromGlobal (GNot f))               = FromGlobal f
 -- returns the agent with which we comunicate
 communicationAgent :: Formula -> Agent
 communicationAgent (FromLocal (Comunicates i _)) = i
+communicationAgent (FromLocal (DualCom i _))     = i
 communicationAgent _                             = undefined
-
+-- dve faltar aqui no caso do x
 
 localAgent :: Formula -> Agent
 localAgent (FromGlobal (Local i _)) = i
