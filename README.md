@@ -18,21 +18,11 @@ Both implementations are discussed in detail on my thesis.
 
 There is also a `python` notebook with a brief comparison on both methods.
 
-# On the implementation
-
-## Automata
-
-### Buchi automata
-
-### General buchi automata
-
-## Transition systems
-
 # Installation
 
 Unfortunately currently there is no fancy way to install the program. The only
-way to install is to copy the contents of the folder ´dtl-model-checking´ and
-then using ´stack build´, or any other preferred method of compilation, to
+way to install is to copy the contents of the folder `dtl-model-checking` and
+then using `stack build`, or any other preferred method of compilation, to
 compile and install.
 
 # Usage
@@ -41,7 +31,6 @@ This is meant to be used as a command line tool where the user provides a file
 with the encoded transition systems and a formula. For example
 
 ```./Main -modelCheck <path-to-the-transition-system> <formula> <number-of-agents>```
-
 
 will run the automata theoretic approach with the given formula and transition
 system.
@@ -82,10 +71,7 @@ uses the automata theoretic approach.
 
 To use the bounded approach use
 
-```
-./Main -modelCheck <path-to-transition-system> <formula> <number of agents> -bounded <maxbound>
-
-```
+```./Main -modelCheck <path-to-transition-system> <formula> <number of agents> -bounded <maxbound>```
 
 where `<maxbound>` will be the max bound used. If no counter example is found
 until this bound then the algorithm returns true.
@@ -95,6 +81,12 @@ format which can the be copy pasted [here](http://www.webgraphviz.com/) for a
 visualization of the transition system.
 
 # Structure of the repository
+
+This repository contains several two main folders. The folder
+contains `dtl-model-checking` the source code for the model checking algorithm.
+
+The folder `plots` simply contains simulations and tests used for the plots in
+my thesis.
 
 # License
 
