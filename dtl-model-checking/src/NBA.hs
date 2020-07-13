@@ -1,4 +1,3 @@
-{-# OPTIONS_GHC -fforce-recomp    #-}
 {-# OPTIONS_GHC -O2               #-}
 module NBA
   (
@@ -9,7 +8,6 @@ module NBA
 
 
 
-import qualified Automaton       as GNBA
 import           CommonTypes
 import           Control.Monad   (replicateM)
 import           Data.List       (intersect, nub, permutations, sort,
@@ -416,145 +414,95 @@ complement a sigma =
 -- End of complementation of the automaton
 -- ---------------------------------------------------------------------
 
-
-
--- | Converts a generalized non deterministic Bucgi automaton
---   into a non-deterministic Buchi automaton
-toNBA :: GNBA.GNBA -> NBA GNBA.AlphabetSymbol
-toNBA g =
-  NBA { states = s'',
-        inicialStates = q0',
-        finalStates = f',
-        delta = delta'
-      }
-  where delta' = Map.fromList [
-                                (i, helper (fromJust $ Map.lookup i sm)) | i<-s''
-                              ]
-        q0' = [i | i<-s'',
-                   fst (fromJust (Map.lookup i sm)) `elem` iStates,
-                   snd (fromJust (Map.lookup i sm)) == 0
-             ]
-        f' = [i | i<-s'',
-                  fst (fromJust (Map.lookup i sm)) `Set.member` head finalSets,
-                  snd (fromJust (Map.lookup i sm)) == 0] ---- note that this will raise an erro if finalSets = []
-        sm = Map.fromList  $ zip s'' s'
-        -- sm is a mapping {1: (q, k).., n:(q', k')}
-        s'' = [1..(length s')]
-        s' = [(q, k) | q<-s, k<-[0..(nFinalSets-1)]]
-        s = GNBA.states g
-        nFinalSets = length finalSets
-        finalSets = auxGetter g
-        iStates = GNBA.inicialStates g
-        d = GNBA.delta g
-        auxGetter :: GNBA.GNBA -> [Set.Set State]
-        auxGetter g
-          | null $ GNBA.finalStates g = [Set.fromList s]
-          | otherwise = GNBA.finalStates g
-        helper :: (State, Int) -> [(GNBA.AlphabetSymbol, State)]
-        helper qi@(q, i)
-          | q `Set.member` (finalSets!!i) =
-              [(sigma, s) | s<-s'',
-                            sigma<-nub $ map fst (fromJust (Map.lookup q d)),
-                            (sigma, fst (fromJust (Map.lookup s sm))) `elem` fromJust (Map.lookup q d),
-                            snd (fromJust $ Map.lookup s sm) == (i+1) `mod` nFinalSets]
-          | otherwise =
-              [(sigma, s) | s<-s'',
-                            sigma<-nub $ map fst (fromJust (Map.lookup q d)),
-                            (sigma, fst (fromJust (Map.lookup s sm))) `elem` fromJust (Map.lookup q d),
-                            snd (fromJust $ Map.lookup s sm) == i]
-
-
-
-
 -- -----------------------------------------------------------------
 -- Test automatons and other variables
 -- -----------------------------------------------------------------
-gsmall = NBA { states = [1, 2],
-               finalStates = [2],
-               inicialStates = [1],
-               delta = Map.fromList [(1, [("a", 1), ("b", 1), ("b", 2)]),
-                                     (2, [("b", 2)])]
-              }
+-- gsmall = NBA { states = [1, 2],
+--                finalStates = [2],
+--                inicialStates = [1],
+--                delta = Map.fromList [(1, [("a", 1), ("b", 1), ("b", 2)]),
+--                                      (2, [("b", 2)])]
+--               }
 
-g = NBA { states = [1, 2, 3],
-          finalStates = [1],
-          inicialStates = [1, 2],
-          delta = Map.fromList [(1, [("a", 1), ("b", 2), ("a", 3)]) , (2, [("b", 1), ("a", 3)]), (3, [])]
-        }
+-- g = NBA { states = [1, 2, 3],
+--           finalStates = [1],
+--           inicialStates = [1, 2],
+--           delta = Map.fromList [(1, [("a", 1), ("b", 2), ("a", 3)]) , (2, [("b", 1), ("a", 3)]), (3, [])]
+--         }
 
-g2 = NBA { states = [1, 2, 3, 4],
-           finalStates = [1, 4],
-           inicialStates = [1, 2],
-           delta = Map.fromList [(1, [("a", 1), ("b", 2), ("a", 3)]),
-                                 (2, [("b", 1), ("a", 3), ("a", 4)]),
-                                 (3, [("b", 2), ("c", 4)]),
-                                 (4, [("", 4)])]
-        }
+-- g2 = NBA { states = [1, 2, 3, 4],
+--            finalStates = [1, 4],
+--            inicialStates = [1, 2],
+--            delta = Map.fromList [(1, [("a", 1), ("b", 2), ("a", 3)]),
+--                                  (2, [("b", 1), ("a", 3), ("a", 4)]),
+--                                  (3, [("b", 2), ("c", 4)]),
+--                                  (4, [("", 4)])]
+--         }
 
-g3 = NBA {
-           states = [1, 2, 3, 4, 5],
-           finalStates = [3, 4, 5],
-           inicialStates = [2, 1],
-           delta = Map.fromList [ (1, [("", 2), ("", 4)]),
-                                  (2, [("", 3)]),
-                                  (3, [("", 1)]),
-                                  (4, [("", 5)]),
-                                  (5, [("", 4)])
-                                ]
-         }
+-- g3 = NBA {
+--            states = [1, 2, 3, 4, 5],
+--            finalStates = [3, 4, 5],
+--            inicialStates = [2, 1],
+--            delta = Map.fromList [ (1, [("", 2), ("", 4)]),
+--                                   (2, [("", 3)]),
+--                                   (3, [("", 1)]),
+--                                   (4, [("", 5)]),
+--                                   (5, [("", 4)])
+--                                 ]
+--          }
 
-gAlphaBall = NBA {
-           states = [1, 2, 3, 4, 5],
-           finalStates = [2, 4],
-           inicialStates = [],
-           delta = Map.fromList [ (1, [("", 2)]),
-                                  (2, [("", 3)]),
-                                  (3, [("", 1)]),
-                                  (4, [("a", 5)]),
-                                  (5, [("a", 4)])
-                                ]
-         }
+-- gAlphaBall = NBA {
+--            states = [1, 2, 3, 4, 5],
+--            finalStates = [2, 4],
+--            inicialStates = [],
+--            delta = Map.fromList [ (1, [("", 2)]),
+--                                   (2, [("", 3)]),
+--                                   (3, [("", 1)]),
+--                                   (4, [("a", 5)]),
+--                                   (5, [("a", 4)])
+--                                 ]
+--          }
 
-gAlphaBall2 = NBA {
-           states = [1, 2, 3, 4, 5],
-           finalStates = [2, 4],
-           inicialStates = [],
-           delta = Map.fromList [ (1, [("", 4)]),
-                                  (2, [("", 3)]),
-                                  (3, [("", 1)]),
-                                  (4, [("a", 5)]),
-                                  (5, [("a", 4)])
-                                ]
-         }
+-- gAlphaBall2 = NBA {
+--            states = [1, 2, 3, 4, 5],
+--            finalStates = [2, 4],
+--            inicialStates = [],
+--            delta = Map.fromList [ (1, [("", 4)]),
+--                                   (2, [("", 3)]),
+--                                   (3, [("", 1)]),
+--                                   (4, [("a", 5)]),
+--                                   (5, [("a", 4)])
+--                                 ]
+--          }
 
-gTesteComponents = NBA {
-                         states = [0..13],
-                         finalStates = [1, 7, 13, 0, 6],
-                         inicialStates = [],
-                         delta = Map.fromList [ (0, [("", 0), ("", 0)]),
-                                                (1, [("", 2), ("", 8)]),
-                                                (2, [("", 0)]),
-                                                (3, [("", 2), ("", 4), ("", 7)]),
-                                                (4, [("", 6)]),
-                                                (5, [("", 4)]),
-                                                (6, [("", 5)]),
-                                                (7, [("", 8), ("", 10), ("", 12)]),
-                                                (8, [("", 11)]),
-                                                (9, [("", 7)]),
-                                                (10, [("", 11), ("", 13)]),
-                                                (11, [("", 9)]),
-                                                (12, [("a", 13), ("", 13)]),
-                                                (13, [("", 12), ("a", 12)])
-                                              ]
-                       }
+-- gTesteComponents = NBA {
+--                          states = [0..13],
+--                          finalStates = [1, 7, 13, 0, 6],
+--                          inicialStates = [],
+--                          delta = Map.fromList [ (0, [("", 0), ("", 0)]),
+--                                                 (1, [("", 2), ("", 8)]),
+--                                                 (2, [("", 0)]),
+--                                                 (3, [("", 2), ("", 4), ("", 7)]),
+--                                                 (4, [("", 6)]),
+--                                                 (5, [("", 4)]),
+--                                                 (6, [("", 5)]),
+--                                                 (7, [("", 8), ("", 10), ("", 12)]),
+--                                                 (8, [("", 11)]),
+--                                                 (9, [("", 7)]),
+--                                                 (10, [("", 11), ("", 13)]),
+--                                                 (11, [("", 9)]),
+--                                                 (12, [("a", 13), ("", 13)]),
+--                                                 (13, [("", 12), ("a", 12)])
+--                                               ]
+--                        }
 
 
-gBugTransitionSystem = NBA {
-                             states = [1..4],
-                             finalStates = [],
-                             inicialStates = [],
-                             delta = Map.fromList [ (1, []),
-                                                    (2, []),
-                                                    (3, [("", 4)]),
-                                                    (4, [("", 1)])]
-                           }
+-- gBugTransitionSystem = NBA {
+--                              states = [1..4],
+--                              finalStates = [],
+--                              inicialStates = [],
+--                              delta = Map.fromList [ (1, []),
+--                                                     (2, []),
+--                                                     (3, [("", 4)]),
+--                                                     (4, [("", 1)])]
+--                            }

@@ -10,7 +10,6 @@ module DTLFormula
   , negateFormula
   , subFormulasAgent
   , findInDepthForAgent
-  , psiTest
   , isImplication
   , isOr
   , isAnd
@@ -417,17 +416,17 @@ getSubFormulasAnd (FromGlobal (GAnd f1 f2)) = [FromGlobal f1 , FromGlobal f2]
 getSubFormulasAnd _                         = undefined -- must change here when adding globally
 
 
-psiTest :: LocalFormula
-psiTest = Implies (Globally (PropositionalSymbol "p") ) (Comunicates 2 (PropositionalSymbol "q"))
-psi1 :: LocalFormula
-psi1 = Not (PropositionalSymbol "q")
-psi2 :: LocalFormula
-psi2 = Next $ Not (PropositionalSymbol "q")
-psi3 :: LocalFormula
-psi3 = Implies psi1 psi2
-psiGTest :: GlobalFormula
-psiGTest = GNot (Local 1 psiTest)
+-- psiTest :: LocalFormula
+-- psiTest = Implies (Globally (PropositionalSymbol "p") ) (Comunicates 2 (PropositionalSymbol "q"))
+-- psi1 :: LocalFormula
+-- psi1 = Not (PropositionalSymbol "q")
+-- psi2 :: LocalFormula
+-- psi2 = Next $ Not (PropositionalSymbol "q")
+-- psi3 :: LocalFormula
+-- psi3 = Implies psi1 psi2
+-- psiGTest :: GlobalFormula
+-- psiGTest = GNot (Local 1 psiTest)
 
-psiTeseLocal1 = Not (Comunicates 2 (Next (Comunicates 1 (Globally (PropositionalSymbol "p")))))
-psiTeseLocal2 = Not (Next (PropositionalSymbol "q"))
-psiTeseGlobal = GImplies (Local 1 psiTeseLocal1) (Local 2 psiTeseLocal2)
+-- psiTeseLocal1 = Not (Comunicates 2 (Next (Comunicates 1 (Globally (PropositionalSymbol "p")))))
+-- psiTeseLocal2 = Not (Next (PropositionalSymbol "q"))
+-- psiTeseGlobal = GImplies (Local 1 psiTeseLocal1) (Local 2 psiTeseLocal2)

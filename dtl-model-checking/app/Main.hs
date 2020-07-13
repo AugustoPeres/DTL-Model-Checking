@@ -1,4 +1,3 @@
-{-# OPTIONS_GHC -fforce-recomp    #-}
 {-# OPTIONS_GHC -O2               #-}
 module Main where
 
