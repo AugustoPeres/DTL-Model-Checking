@@ -61,6 +61,8 @@ be of the following form:
 
 ## Command line options
 
+### Model Checking
+
 There are only a few command line output arguments.
 
 The first one is of the type
@@ -76,8 +78,41 @@ To use the bounded approach use
 where `<maxbound>` will be the max bound used. If no counter example is found
 until this bound then the algorithm returns true.
 
+In both the previous commands the user gets only an answer stating whether or
+not the transition systems satisfies the formula.
+
+To get a counter example the commands are
+
+```./Main -oneCounterExample <path-to-transition-system> <formula> <number of agents>```
+
+using the automata theoretic approach
+
+or
+
+```./Main -oneCounterExample <path-to-transition-system> <formula> <number of agents> -bounded <max-bound>```
+
+for the bounded approach.
+
+In the first case the output will be something like `CounterExample [ [(s1, x1),
+(s2, x2)...(sn, x2)], [(sn, xn), ..., (sn, xn)] ]`. This corresponds to the
+infinite path in the dot product of DTS with the automaton that witnesses the
+persistence property. Projecting the first coordinates yields an infinite path
+in the transition system.
+
+In the second case we get an output of the form `Just (fromList
+[("0_a":True)..("0_p1":True)...], k)`. Corresponding to the solution of the
+formula and the symbols present in each state. The number before “_” indicates
+the action taken at that step. k corresponds to the bound for which a counter
+example was found.
+
+### Visualization
+
 There is also the possibility of printing a transition systems system to the dot
-format which can the be copy pasted [here](http://www.webgraphviz.com/) for a
+format using the command
+
+```./Main -toGraphviz <file-with-the-transition-system> ```
+
+The output can then be copy pasted [here](http://www.webgraphviz.com/) for a
 visualization of the transition system.
 
 # Structure of the repository
