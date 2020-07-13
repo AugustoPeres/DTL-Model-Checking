@@ -12,6 +12,7 @@ module ExampleInstances
     t8States2Agents7, t8States2Agents8, t8States2Agents9, t8States2Agents10,
     t16States2Agents1, t16States2Agents2,
     t16States2Agents3, t16States2Agents4, t32States2Agents1, t32States2Agents2,
+    t32States2Agents3, t32States2Agents4,
     t64States2Agents1, t64States2Agents2, t128States2Agents1, t128States2Agents2,
     t256States2Agents1, t256States2Agents2, t512States2Agents1, t512States2Agents2,
     t1024States2Agents1, t1024States2Agents2,
@@ -288,6 +289,28 @@ t32States2Agents2 = T.generateDTSFromStdGen 2
                                            (mkStdGen 4)
                                            0.1
                                            0.05
+t32States2Agents3 :: T.DTS Int Int F.Formula String
+t32States2Agents3 = T.generateDTSFromStdGen 2
+                                           [
+                                             [F.FromLocal $ F.PropositionalSymbol "p1", F.FromLocal $ F.PropositionalSymbol "p2", F.FromLocal $ F.PropositionalSymbol "p3"],
+                                             [F.FromLocal $ F.PropositionalSymbol "q1", F.FromLocal $ F.PropositionalSymbol "q2"]
+                                           ]
+                                           [["a", "b"], ["a", "c"]]
+                                           (mkStdGen 5)
+                                           0.1
+                                           0.05
+
+t32States2Agents4 :: T.DTS Int Int F.Formula String
+t32States2Agents4 = T.generateDTSFromStdGen 2
+                                           [
+                                             [F.FromLocal $ F.PropositionalSymbol "p1", F.FromLocal $ F.PropositionalSymbol "p2", F.FromLocal $ F.PropositionalSymbol "p3"],
+                                             [F.FromLocal $ F.PropositionalSymbol "q1", F.FromLocal $ F.PropositionalSymbol "q2"]
+                                           ]
+                                           [["a", "b"], ["a", "c"]]
+                                           (mkStdGen 6)
+                                           0.1
+                                           0.05
+
 -- end of transition systems with 32 states --
 
 -- trnasition systems with 64 states --

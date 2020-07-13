@@ -1,14 +1,5 @@
-import           AutomataTheoreticApproach as A
-import           BMC                       as B
-import           CommonTypes
-import           DTLFormula                as F
 import           DTS                       as T
 import           ExampleInstances
-
-import System.Environment
-import System.Exit
-
-parse ["8", "1"] = putStrLn $ T.dumpToString t8States2Agents1
 
 main :: IO()
 main =
@@ -22,10 +13,10 @@ main =
      writeFile "t16States3" (T.dumpToString $ T.fullSimplify t16States2Agents3)
      writeFile "t16States4" (T.dumpToString $ T.fullSimplify t16States2Agents4)
 
-     writeFile "t32States1" (T.dumpToString $ T.fullSimplify t16States2Agents1)
-     writeFile "t32States2" (T.dumpToString $ T.fullSimplify t16States2Agents2)
-     writeFile "t32States3" (T.dumpToString $ T.fullSimplify t16States2Agents3)
-     writeFile "t32States4" (T.dumpToString $ T.fullSimplify t16States2Agents4)
+     writeFile "t32States1" (T.dumpToString $ T.fullSimplify t32States2Agents1)
+     writeFile "t32States2" (T.dumpToString $ T.fullSimplify t32States2Agents2)
+     writeFile "t32States3" (T.dumpToString $ T.fullSimplify t32States2Agents3)
+     writeFile "t32States4" (T.dumpToString $ T.fullSimplify t32States2Agents4)
 
      writeFile "t64States1" (T.dumpToString $ T.fullSimplify t64States2Agents1)
      writeFile "t64States2" (T.dumpToString $ T.fullSimplify t64States2Agents2)

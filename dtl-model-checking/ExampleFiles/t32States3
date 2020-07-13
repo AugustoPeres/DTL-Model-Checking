@@ -1,9 +1,39 @@
-states 16 15 14 13 12 11 10 9 8 7 6 5 4 3 2 1 
-initial 13 7 2 1 
+states 32 31 30 29 28 27 25 24 23 22 21 20 19 18 17 16 15 14 13 12 11 10 9 8 7 6 5 4 3 2 1 
+initial 22 17 14 4 1 
 actions 2 c a 
 actions 1 b a 
 symbols 2 q2 q1 
-symbols 1 p2 p1 
+symbols 1 p3 p2 p1 
+label 32 2 q2 q1 
+label 32 1 p3 p2 p1 
+label 31 2 q2 
+label 31 1 p3 p2 p1 
+label 30 2 q1 
+label 30 1 p3 p2 p1 
+label 29 2 
+label 29 1 p3 p2 p1 
+label 28 2 q2 q1 
+label 28 1 p3 p2 
+label 27 2 q2 
+label 27 1 p3 p2 
+label 25 2 
+label 25 1 p3 p2 
+label 24 2 q2 q1 
+label 24 1 p3 p1 
+label 23 2 q2 
+label 23 1 p3 p1 
+label 22 2 q1 
+label 22 1 p3 p1 
+label 21 2 
+label 21 1 p3 p1 
+label 20 2 q2 q1 
+label 20 1 p3 
+label 19 2 q2 
+label 19 1 p3 
+label 18 2 q1 
+label 18 1 p3 
+label 17 2 
+label 17 1 p3 
 label 16 2 q2 q1 
 label 16 1 p2 p1 
 label 15 2 q2 
@@ -36,68 +66,130 @@ label 2 2 q1
 label 2 1 
 label 1 2 
 label 1 1 
-16 a 9
-16 a 7
-16 a 5
-16 a 4
-16 a 3
-16 a 1
-15 c 15
-15 a 16
-15 a 7
-15 a 6
-15 a 3
+32 a 31
+31 a 27
+31 a 10
+31 a 8
+31 a 1
+30 b 18
+30 a 24
+30 a 22
+30 a 19
+29 c 30
+29 a 31
+29 a 23
+29 a 10
+29 a 7
+28 b 12
+28 a 32
+28 a 31
+28 a 27
+28 a 16
+28 a 15
+28 a 14
+28 a 2
+27 a 24
+27 a 14
+27 a 8
+27 a 7
+25 c 28
+25 b 25
+25 a 22
+25 a 10
+25 a 4
+24 c 23
+24 c 22
+24 b 24
+24 a 32
+24 a 20
+24 a 5
+23 a 14
+22 a 24
+22 a 23
+22 a 19
+21 b 17
+21 a 17
+21 a 9
+20 b 16
+20 a 27
+20 a 22
+20 a 21
+20 a 7
+19 c 18
+19 c 17
+19 b 27
+19 a 31
+19 a 30
+19 a 14
+19 a 6
+18 b 22
+18 a 16
+18 a 15
+18 a 9
+17 b 21
+17 a 9
+17 a 4
+16 b 12
+16 a 28
+15 c 13
+15 a 25
+15 a 24
+15 a 5
+15 a 2
+14 a 25
+14 a 24
+14 a 10
+14 a 9
 14 a 7
-13 c 14
-13 b 9
-13 a 8
-13 a 7
-13 a 5
-12 c 11
-12 b 4
-12 a 10
+14 a 1
+13 b 13
+13 a 15
+12 b 20
+12 a 32
+12 a 31
+12 a 27
+12 a 22
+12 a 11
 12 a 3
-11 b 15
-11 b 11
-11 a 12
-10 a 2
+12 a 2
+11 b 31
+11 a 32
+11 a 23
+11 a 18
+11 a 14
+11 a 10
+10 a 15
+10 a 8
+9 b 29
+9 a 31
+9 a 11
 9 a 10
-9 a 9
-9 a 7
-8 a 14
-8 a 9
-7 c 8
-7 a 13
-7 a 10
-7 a 3
-7 a 2
-6 a 14
-6 a 10
+9 a 8
+8 c 6
+8 b 12
+8 a 31
+8 a 18
+7 a 25
+7 a 21
+7 a 7
+7 a 6
+7 a 5
+7 a 1
+6 a 31
+6 a 16
+6 a 11
 6 a 6
-6 a 4
 5 c 8
-5 b 13
-5 a 15
-5 a 13
-5 a 12
-5 a 11
-5 a 4
-5 a 3
-4 c 4
-4 a 13
-4 a 6
-3 c 3
-3 c 2
-3 b 7
-3 a 16
-3 a 10
-3 a 9
-3 a 1
-2 b 2
-2 a 12
+5 b 25
+5 b 9
+4 a 31
+3 a 28
 2 a 9
-2 a 5
-1 b 1
-1 a 8
-1 a 4
-1 a 2
+2 a 7
+2 a 4
+2 a 1
+1 c 1
+1 b 13
+1 a 30
+1 a 22
+1 a 5
