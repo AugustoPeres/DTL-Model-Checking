@@ -25,6 +25,8 @@ way to install is to copy the contents of the folder `dtl-model-checking` and
 then using `stack build`, or any other preferred method of compilation, to
 compile and install.
 
+The usual `stack ghc Main.hs` will also work
+
 # Usage
 
 This is meant to be used as a command line tool where the user provides a file
@@ -110,10 +112,36 @@ example was found.
 There is also the possibility of printing a transition systems system to the dot
 format using the command
 
-```./Main -toGraphviz <file-with-the-transition-system> ```
+```./Main -toGraphviz <file-with-the-transition-system>```
 
 The output can then be copy pasted [here](http://www.webgraphviz.com/) for a
 visualization of the transition system.
+
+### Usage examples
+
+```
+./Main -modelCheck t8States2Agents1.txt "(@_1(p1))=>~(@_2(q1))" 2
+True
+
+
+./Main -modelCheck t8States2Agents1.txt "@_2(X(c_1(p2)))" 2
+True
+
+
+./Main -modelCheck t8States2Agents4.txt "(@_1(c_2(q1)))=>(@_1(p1))" 2
+False
+
+
+./Main -modelCheck t8States2Agents4.txt "@_1(F((p1)/\\(p2)))" 2 -bounded 0
+True
+
+./Main -modelCheck t8States2Agents4.txt "@_1(F((p1)/\\(p2)))" 2 -bounded 2
+False
+
+
+./Main -oneCounterExample t8States2Agents4.txt "@_1(F((p1)/\\(p2)))" 2 -bounded 2
+Just (fromList [(0_"a",True),(0_"b",False),(0_"c",False),(0_p1,False),(0_p2,False),(0_q1,False),(1_"a",False),(1_"b",True),(1_"c",False),(1_p1,True),(1_p2,False),(1_q1,False)],1)
+```
 
 # Structure of the repository
 

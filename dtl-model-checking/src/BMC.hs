@@ -1,6 +1,5 @@
 {-# LANGUAGE FlexibleInstances    #-}
 {-# LANGUAGE TypeSynonymInstances #-}
-{-# OPTIONS_GHC -fforce-recomp    #-}
 {-# OPTIONS_GHC -O2               #-}
 module BMC ( stateTranslation
            , dtsTranslation

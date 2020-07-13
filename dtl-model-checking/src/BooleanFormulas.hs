@@ -48,9 +48,9 @@ getVariables :: BooleanFormula a -> [a]
 getVariables f =
   helper f []
   where helper (Atom a) q  = a:q
-        helper (Neg f) q   = helper f q
-        helper (Or f g) q  = helper f q ++ helper g q
-        helper (And f g) q = helper f q ++ helper g q
+        helper (Neg f') q   = helper f' q
+        helper (Or f' g) q  = helper f' q ++ helper g q
+        helper (And f' g) q = helper f' q ++ helper g q
 
 
 varAppearsNegated :: Eq a => a -> BooleanFormula a -> Bool

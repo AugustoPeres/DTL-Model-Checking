@@ -1,6 +1,5 @@
 {-# LANGUAGE FlexibleInstances    #-}
 {-# LANGUAGE TypeSynonymInstances #-}
-{-# OPTIONS_GHC -fforce-recomp    #-}
 {-# OPTIONS_GHC -O2               #-}
 module AutomataTheoreticApproach (AutomataCounterExample(..),
                                   modelCheck, modelCheckWithCounterExamples, makeComplementaryGNBA,
